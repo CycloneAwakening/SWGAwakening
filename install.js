@@ -6,7 +6,7 @@ const server = require('./json/server');
 module.exports.getManifest = function(fullScan, emuPath, checkFiles) {
     var files = require('./json/required');
 
-    const configFile = require('os').homedir() + '/Documents/My Games/SWG - Sentinels Republic/SR-Launcher-config.json';
+    const configFile = require('os').homedir() + '/Documents/My Games/SWG - Awakening/SWG-Awakening-Launcher-config.json';
     var config = {login: 'live'};
     if (fs.existsSync(configFile)) config = JSON.parse(fs.readFileSync(configFile));
     

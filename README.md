@@ -1,12 +1,12 @@
 # Sentinels Republic Launcher
 
-**Electron application based on [dpwhitter's RoC Launcher](https://github.com/dpwhittaker/RoC-Launcher)**
+**Electron application based on [dpwhitter's RoC Launcher](https://github.com/dpwhittaker/RoC-Launcher) and [Tyclo's Adaptation](https://github.com/DesporoWace/SR-Launcher) **
 
-**All graphics are property of Sentinels Republic**
+**All graphics are property of SWG Awakening or The Respective Authors**
 
 ## Features
 
-The Sentinel Republic (SR) Launcher includes a new user friendly interface, a guided set up process, patching for multiple login servers and Linux/macOS compatibility. Also included are many other miscellaneous tweaks, improvements and new features.
+The SWG Awakening Launcher includes a new user friendly interface, a guided set up process, patching for multiple login servers and Linux/macOS compatibility. Also included are many other miscellaneous tweaks, improvements and new features.
 
 ## Get Started
 
@@ -14,7 +14,7 @@ To clone and run this repository you'll need [Git](https://git-scm.com) and [Nod
 
 ```bash
 # Clone this repository
-git clone https://github.com/DesporoWace/SR-Launcher.git
+git clone https://github.com/CycloneAwakening/Testing-Launcher-Editing.git
 # Go into the repository
 cd SR-Launcher
 # Install dependencies

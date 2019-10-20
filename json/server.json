@@ -1,8 +1,8 @@
 {
 	"live": [
-		{"address":"sentinelsgalaxy.com","port":"44453","manifestUrl":"http://ode-guild.com/swg/updates/manifest.json","statusUrl":"http://sentinelsgalaxy.com/launcher-status.php"}
+		{"address":"login.swgawakening.com","port":"44453","manifestUrl":"http://ode-guild.com/swg/updates/manifest.json","statusUrl":"http://sentinelsgalaxy.com/launcher-status.php"}
 	],
 	"test": [
-		{"address":"swgsremudev.ddns.net","port":"44453","manifestUrl":"http://ode-guild.com/swg/test/manifest.json","statusUrl":"https://swgsremu.com/launcher/test/launcher-status.php"}
+		{"address":"test.swgawakening.com","port":"44453","manifestUrl":"http://ode-guild.com/swg/test/manifest.json","statusUrl":"https://swgsremu.com/launcher/test/launcher-status.php"}
 	]
 }

@@ -9,10 +9,10 @@ const path = require('path');
 
 const sidebarLinks = document.getElementById('sidebarLinks');
 
-const folderBox = document.getElementById('folder'); // SR Folder Location
+const folderBox = document.getElementById('folder'); // SWG Awakening Folder Location
 const browseBtn = document.getElementById('browse'); // Set Installation Location Button
-const installBtn = document.getElementById('install'); // SWG Installation Button
-const swgFolderBox = document.getElementById('swgFolder'); // SR Folder Location
+const installBtn = document.getElementById('install'); // SWG Base Installation Button
+const swgFolderBox = document.getElementById('swgFolder'); // SWG Awakening Folder Location
 
 const cancelBtn = document.getElementById('cancel');
 
@@ -35,8 +35,8 @@ const agreeCleanUp = document.getElementById('agreeCleanUp');
 const cleanUpCount = document.getElementById('cleanUpCount');
 const cleanUpSize = document.getElementById('cleanUpSize');
 
-const configFile = require('os').homedir() + '/Documents/My Games/SWG - Sentinels Republic/SR-Launcher-config.json';
-var config = {folder: 'C:\\SREmu'};
+const configFile = require('os').homedir() + '/Documents/My Games/SWG Awakening/SWG-Awakening-Launcher-config.json';
+var config = {folder: 'C:\\SWGAwakening'};
 if (fs.existsSync(configFile))
     config = JSON.parse(fs.readFileSync(configFile));
 folderBox.value = config.folder;

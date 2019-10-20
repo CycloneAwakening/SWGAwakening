@@ -1,7 +1,6 @@
 fonts
 node_modules
 dist
-profcalc
 manifest.json
 app-update.yml
 dev-app-update.yml

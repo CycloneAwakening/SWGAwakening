@@ -55,8 +55,8 @@ const activeServer = document.getElementById('activeServer');
 const versionDiv = document.getElementById('version');
 versionDiv.innerHTML = package.version;
 
-const configFile = os.homedir() + '/Documents/My Games/SWG - Sentinels Republic/SR-Launcher-config.json';
-var config = {folder: 'C:\\SREmu'};
+const configFile = os.homedir() + '/Documents/My Games/SWG - Awakening/SWG-Awakening-Launcher-config.json';
+var config = {folder: 'C:\\SWGAwakening'};
 
 if (fs.existsSync(configFile))
     config = JSON.parse(fs.readFileSync(configFile));

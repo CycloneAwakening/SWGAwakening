@@ -17,17 +17,17 @@ html {
 
 /* Fonts */
 @font-face {
-  font-family: 'sr-font';
-  src: url('./fonts/sr-font-bold.woff2') format('woff2'),
-      url('./fonts/sr-font-bold.woff') format('woff');
+  font-family: 'swga-font';
+  src: url('./fonts/swga-font-bold.woff2') format('woff2'),
+      url('./fonts/swga-font-bold.woff') format('woff');
   font-weight: bold;
   font-style: normal;
 }
 
 @font-face {
-  font-family: 'sr-font';
-  src: url('./fonts/sr-font.woff2') format('woff2'),
-      url('./fonts/sr-font.woff') format('woff');
+  font-family: 'swga-font';
+  src: url('./fonts/swga-font.woff2') format('woff2'),
+      url('./fonts/swga-font.woff') format('woff');
   font-weight: normal;
   font-style: normal;
 }
@@ -89,7 +89,7 @@ html {
   width: 1130px;
   height: 610px;
   z-index: -1;
-  background-image: url("./img/sr-background.png");
+  background-image: url("./img/swga-background.png");
   background-size: auto;
   background-position: top left;
   background-repeat: no-repeat;
@@ -241,19 +241,19 @@ hr {
 #headerLinks > .text-link {
   padding: 2px 14px 2px;
   border-right: 1px solid #000;
-  font-family: 'sr-font';
+  font-family: 'swga-font';
   font-size: 24px;
   text-transform: uppercase;
 }
 #headerLinks > .text-link {
-  color: #570707;
+  color: #FFFFFF;
 }
 #headerLinks > .text-link:hover, #headerLinks > .text-link:active, #headerLinks > .text-link:focus {
-  color: #b80000;
+  color: #b5b3b3;
 }
 #headerLinks > .patch-notes-title {
   font-size: 27px;
-  color: #000;
+  color: #403f3f;
   padding: 1px 14px 0 0;
 }
 #headerLinks > .btn-links {
@@ -369,7 +369,7 @@ hr {
 }
 
 .sr-button {
-  font-family: 'sr-font';
+  font-family: 'swga-font';
   font-size: 18px;
   font-weight: 600;
   text-transform: uppercase;
@@ -474,7 +474,7 @@ hr {
 
 .play-button-container #play, .play-button-container #play:focus {
   width: 100%;
-  font-family: 'sr-font';
+  font-family: 'swga-font';
   font-size: 32px;
   color: #fff;
   font-weight: 600;
@@ -557,7 +557,7 @@ hr {
 }
 .server-stats {
   color: #fff;
-  font-family: 'sr-font';
+  font-family: 'swga-font';
   font-size: 16px;
   text-transform: uppercase;
   margin-top: 7px;
@@ -565,7 +565,7 @@ hr {
   animation: fadein 1.5s;
 }
 .server-stats span {
-  font-family: 'sr-font';
+  font-family: 'swga-font';
   font-size: 16px;
   font-weight: 600;
   display: inline-block;
@@ -623,7 +623,7 @@ hr {
   padding: 4px 6px;
   background-color: #420000;
   color: #fff;
-  font-family: 'sr-font';
+  font-family: 'swga-font';
   font-weight: 600;
   font-size: 16px;
   text-transform: uppercase;
@@ -691,7 +691,7 @@ hr {
 
 .config-label {
   color: #000;
-  font-family: 'sr-font';
+  font-family: 'swga-font';
   font-weight: 600;
   font-size: 14px;
   text-transform: uppercase;
@@ -786,7 +786,7 @@ input:focus {
 
 .config-label-sm {
   color: #555;
-  font-family: 'sr-font';
+  font-family: 'swga-font';
   font-weight: 600;
   font-size: 13px;
   text-transform: uppercase;
@@ -1001,14 +1001,14 @@ button.tooltip:hover {
   margin: 0 0 9px;
 }
 .config-prompt-overlay #helpInfoPrompt .config-options {
-  background-image: url("./img/sr-jedi-tiny-grey.jpg");
+  background-image: url("./img/swga-mini-logo-grey.png");
   background-size: auto;
   background-position: 96% 92%;
   background-repeat: no-repeat;
 }
 
 .config-prompt-overlay #setupCompletePrompt .config-options {
-  background-image: url("./img/sr-jedi-tiny-grey.jpg");
+  background-image: url("./img/swga-mini-logo-grey.png");
   background-size: auto;
   background-position: 96% 6%;
   background-repeat: no-repeat;

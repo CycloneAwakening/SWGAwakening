@@ -9,7 +9,7 @@ const mkdirp = require('mkdirp');
 var setupWindow = null;
 var err;
 
-var configDir = require('os').homedir() + '/Documents/My Games/SWG - Sentinels Republic';
+var configDir = require('os').homedir() + '/Documents/My Games/SWG - Awakening';
 
 // Create config directory
 if (!fs.existsSync(configDir))
@@ -18,7 +18,7 @@ if (!fs.existsSync(configDir))
       return err;
   });
 
-log.transports.file.file = configDir + '/SR-Launcher-log.txt';
+log.transports.file.file = configDir + '/SWG-Awakening-Launcher-log.txt';
 autoUpdater.logger = log;
 autoUpdater.logger.transports.file.level = 'info';
 
