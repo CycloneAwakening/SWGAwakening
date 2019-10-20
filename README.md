@@ -1,4 +1,4 @@
-# Sentinels Republic Launcher
+# SWG Awakening Launcher
 
 **Electron application based on [dpwhitter's RoC Launcher](https://github.com/dpwhittaker/RoC-Launcher) and [Tyclo's Adaptation](https://github.com/DesporoWace/SR-Launcher) **
 
