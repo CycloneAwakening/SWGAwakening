@@ -2,7 +2,7 @@
 
 **Electron application based on [dpwhitter's RoC Launcher](https://github.com/dpwhittaker/RoC-Launcher) and [Tyclo's Adaptation](https://github.com/DesporoWace/SR-Launcher) **
 
-**All graphics are property of SWG Awakening or The Respective Authors**
+**All graphics are either property of SWG Awakening or their respective authors**
 
 ## Features
 
