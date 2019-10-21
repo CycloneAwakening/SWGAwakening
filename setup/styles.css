@@ -26,17 +26,17 @@ hr {
 }
 /* Fonts */
 @font-face {
-  font-family: 'sr-font';
-  src: url('../fonts/sr-font-bold.woff2') format('woff2'),
-      url('../fonts/sr-font-bold.woff') format('woff');
+  font-family: 'swga-font';
+  src: url('../fonts/swga-font-bold.woff2') format('woff2'),
+      url('../fonts/swga-font-bold.woff') format('woff');
   font-weight: bold;
   font-style: normal;
 }
 
 @font-face {
-  font-family: 'sr-font';
-  src: url('../fonts/sr-font.woff2') format('woff2'),
-      url('../fonts/sr-font.woff') format('woff');
+  font-family: 'swga-font';
+  src: url('../fonts/swga-font.woff2') format('woff2'),
+      url('../fonts/swga-font.woff') format('woff');
   font-weight: normal;
   font-style: normal;
 }
@@ -198,7 +198,7 @@ hr {
 }
 
 .setup-title {
-  font-family: 'sr-font';
+  font-family: 'swga-font';
   font-size: 30px;
   font-weight: 600;
   margin: 0;
@@ -224,7 +224,7 @@ hr {
   padding: 4px 6px;
   background-color: #420000;
   color: #fff;
-  font-family: 'sr-font';
+  font-family: 'swga-font';
   font-weight: 600;
   font-size: 16px;
   text-transform: uppercase;
@@ -340,7 +340,7 @@ hr {
 
 .config-label {
   color: #000;
-  font-family: 'sr-font';
+  font-family: 'swga-font';
   font-weight: 600;
   font-size: 18px;
   text-transform: uppercase;
@@ -350,7 +350,7 @@ hr {
 }
 .config-label-notice {
   color: #570707;
-  font-family: 'sr-font';
+  font-family: 'swga-font';
   font-weight: 600;
   font-size: 16px;
   text-transform: uppercase;
@@ -372,7 +372,7 @@ hr {
   font-size: 12px;
 }
 .sr-button {
-  font-family: 'sr-font';
+  font-family: 'swga-font';
   font-size: 18px;
   font-weight: 600;
   text-transform: uppercase;
@@ -508,7 +508,7 @@ input#folder:disabled, input#swgFolder:disabled {
 
 .config-label-sm {
   color: #555;
-  font-family: 'sr-font';
+  font-family: 'swga-font';
   font-weight: 600;
   font-size: 12px;
   text-transform: uppercase;
