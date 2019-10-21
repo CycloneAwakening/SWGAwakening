@@ -69,7 +69,7 @@ hr {
   width: 810px;
   height: 610px;
   z-index: -1;
-  background-image: url("./img/sr-setup-background.png");
+  background-image: url("./img/swga-setup-background.png");
   background-size: auto;
   background-position: top left;
   background-repeat: no-repeat;
@@ -168,9 +168,9 @@ hr {
 
 .sidebar-text p {
   font-family: 'Helvetica', 'Arial', sans-serif;
-  font-size: 11px;
+  font-size: 14px;
   line-height: 14px;
-  color: #fff;
+  color: #0d0d0d;
 }
 
 #sidebarLinks {
@@ -181,20 +181,20 @@ hr {
   display: block;
   font-family: 'Helvetica', 'Arial', sans-serif;
   font-size: 14px;
-  color: rgba(255,255,255,0.85);
+  color: rgba(38, 38, 38,0.85);
   padding: 8px 0;
   text-decoration: none;
   -webkit-transition: all 0.1s linear;
   transition: all 0.1s linear;
 }
 .sidebar-link:hover {
-  color: rgba(255,255,255,0.75);
+  color: rgba(38, 38, 38,0.65);
 }
 .sidebar-link:active  {
-  color: rgba(255,255,255,0.95);
+  color: rgba(38, 38, 38,0.95);
 }
 .sidebar-link:focus {
-  color: rgba(255,255,255,0.85);
+  color: rgba(38, 38, 38,0.85);
 }
 
 .setup-title {

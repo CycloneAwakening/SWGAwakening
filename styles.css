@@ -246,14 +246,14 @@ hr {
   text-transform: uppercase;
 }
 #headerLinks > .text-link {
-  color: #FFFFFF;
+  color: #0d0d0d;
 }
 #headerLinks > .text-link:hover, #headerLinks > .text-link:active, #headerLinks > .text-link:focus {
-  color: #b5b3b3;
+  color: #403f3f;
 }
 #headerLinks > .patch-notes-title {
   font-size: 27px;
-  color: #403f3f;
+  color: #000;
   padding: 1px 14px 0 0;
 }
 #headerLinks > .btn-links {
