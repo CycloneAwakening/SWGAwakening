@@ -5,5 +5,5 @@ manifest.json
 app-update.yml
 dev-app-update.yml
 /*.tgz
-/img/swga-background.xcf
-/setup/img/swga-setup-background.xcf
+/img/editor_files
+/setup/img/editor_files
