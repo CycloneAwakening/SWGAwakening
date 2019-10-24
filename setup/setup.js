@@ -41,7 +41,7 @@ if (fs.existsSync(configFile))
     config = JSON.parse(fs.readFileSync(configFile));
 folderBox.value = config.folder;
 
-fileCleanUp();
+//fileCleanUp();
 
 minBtn.addEventListener('click', event => remote.getCurrentWindow().minimize());
 closeBtn.addEventListener('click', event => remote.getCurrentWindow().close());
@@ -180,7 +180,7 @@ ipc.on('selected-directory', function (event, path) {
     folderBox.value = path;
     config.folder = path;
     saveConfig();
-    fileCleanUp();
+    //fileCleanUp();
 });
 
 installBtn.addEventListener('click', function(event) {
