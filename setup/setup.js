@@ -61,7 +61,7 @@ agreeOwner.addEventListener('click', function (event) {
     if (agreeOwner.checked) {
         swgDirSection.style.visibility = 'visible';
         swgDirSection.style.opacity = '1';
-        setupNext.disabled = false;
+        //setupNext.disabled = false;
     } else {
         swgDirSection.style.visibility = 'hidden';
         swgDirSection.style.opacity = '0';
@@ -97,7 +97,7 @@ function changeActiveScreen(button) {
                 document.getElementById("swgInstall").classList.add("active");
                 setupNext.disabled = true;
                 setupNext.innerHTML = "Finish";
-                setupNext.className = "sr-button sr-btn-icon sr-btn-icon-right setup-next-finish";
+                setupNext.className = "swga-button swga-btn-icon swga-btn-icon-right setup-next-finish";
             } else {
                 document.getElementById("rulesAgree").classList.add("active");
                 agreeRules.checked = false;
@@ -114,7 +114,7 @@ function changeActiveScreen(button) {
                 remote.getCurrentWindow().close();
             } else {
                 setupNext.innerHTML = "Next";
-                setupNext.className = "sr-button sr-btn-icon sr-btn-icon-right";
+                setupNext.className = "swga-button swga-btn-icon swga-btn-icon-right";
                 agreeOwner.checked = false;
                 setupNext.disabled = false;
                 swgDirSection.style.visibility = 'hidden';
@@ -194,6 +194,7 @@ ipc.on('install-selected', function (event, dir) {
         swgFolderBox.value = dir;
         swgInstallMessageSuccess.style.display = 'block';
         swgInstallMessageFail.style.display = 'none';
+		setupNext.disabled = false;
     } else {
         swgFolderBox.value = '';
         swgInstallMessageFail.style.display = 'block';

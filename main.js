@@ -18,7 +18,7 @@ if (!fs.existsSync(configDir))
       return err;
   });
 
-log.transports.file.file = configDir + '/SWG-Awakening-Launcher-log.txt';
+log.transports.file.file = configDir + '/SWGAwakening-Launcher-log.txt';
 autoUpdater.logger = log;
 autoUpdater.logger.transports.file.level = 'info';
 
@@ -109,7 +109,7 @@ ipcMain.on('open-profcalc', function() {
     protocol: 'file:',
     slashes: true
   }));
-  if (require('electron-is-dev')) window.webContents.openDevTools();
+  //if (require('electron-is-dev')) window.webContents.openDevTools();
 });
 
 autoUpdater.on('update-downloaded', (info) => {

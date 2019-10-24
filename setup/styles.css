@@ -153,7 +153,7 @@ hr {
   padding: 0 60px 0 29px;
 }
 
-.sr-logo {
+.swga-logo {
   padding: 10px 16.5px 12px;
 }
 .sidebar-inner {
@@ -206,7 +206,7 @@ hr {
   text-transform: uppercase;
 }
 
-#setup-nav .sr-btn-icon {
+#setup-nav .swga-btn-icon {
   display: block;
   width: 80%;
 }
@@ -292,17 +292,17 @@ hr {
 .rules-terms-checkboxes {
   margin-top: 14px;
 }
-.sr-checkbox {
+.swga-checkbox {
   margin-top: 6px;
 }
-.sr-checkbox input[type="checkbox"] {
+.swga-checkbox input[type="checkbox"] {
   margin: 0;
   width: 18px;
   height: 18px;
   position: relative;
   cursor: pointer;
 }
-.sr-checkbox input[type="checkbox"]:after {
+.swga-checkbox input[type="checkbox"]:after {
   content: "";
   display: block;
   width: 19px;
@@ -312,13 +312,13 @@ hr {
   -webkit-transition: all 0.1s linear;
   transition: all 0.1s linear;
 }
-.sr-checkbox input[type="checkbox"]:checked:after {
+.swga-checkbox input[type="checkbox"]:checked:after {
   content: "";
   display: inline-block;
   background-color: #570707;
   border-color: #b80000;
 }
-.sr-checkbox input[type="checkbox"]:checked:before {
+.swga-checkbox input[type="checkbox"]:checked:before {
   content: "\00d7";
   position: absolute;
   left: 3px;
@@ -326,7 +326,7 @@ hr {
   font-size: 22px;
   color: #fff;
 }
-.sr-checkbox label {
+.swga-checkbox label {
   font-family: 'Helvetica', 'Arial', sans-serif;
   font-size: 14px;
   font-weight: 600;
@@ -371,7 +371,7 @@ hr {
 .text-small {
   font-size: 12px;
 }
-.sr-button {
+.swga-button {
   font-family: 'swga-font';
   font-size: 18px;
   font-weight: 600;
@@ -385,37 +385,37 @@ hr {
   -webkit-transition: all 0.1s linear;
   transition: all 0.1s linear;
 }
-.sr-button:hover {
+.swga-button:hover {
   background-color: #570707;
 }
-.sr-button:active {
+.swga-button:active {
   border-color: #570707;
   background-color: #570707;
 }
-.sr-button:disabled {
+.swga-button:disabled {
   cursor: not-allowed;
   background-color: #140d0d !important;
   border-color: #ab252e !important;
 }
 
-.sr-button.sr-btn-icon {
+.swga-button.swga-btn-icon {
   text-align: center;
   position: relative;
   display: inline-block;
 }
-.sr-button.sr-btn-icon-left {
+.swga-button.swga-btn-icon-left {
   padding: 11px 20px 11px 45px;
 }
-.sr-button.sr-btn-icon-right {
+.swga-button.swga-btn-icon-right {
   padding: 11px 45px 11px 20px;
 }
-.sr-button.sr-btn-icon-left::after {
+.swga-button.swga-btn-icon-left::after {
   left: 0;
 }
-.sr-button.sr-btn-icon-right::after {
+.swga-button.swga-btn-icon-right::after {
   right: 0;
 }
-.sr-button.sr-btn-icon::after {
+.swga-button.swga-btn-icon::after {
   content: '';
   position: absolute;
   top: 0;

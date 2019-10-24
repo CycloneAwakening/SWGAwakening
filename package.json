@@ -1,11 +1,11 @@
 {
   "name": "swg-awakening-launcher",
-  "version": "1.0.0",
-  "description": "Version 1.0.0",
+  "version": "1.0.1",
+  "description": "Version 1.0.1",
   "main": "main.js",
   "scripts": {
     "start": "electron .",
-    "build-win": "build --win --ia32 -p always",
+    "build-win": "build --win --ia32",
     "build-linux": "build --linux --x64",
     "build-mac": "build --mac --x64"
   },

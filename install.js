@@ -20,13 +20,14 @@ module.exports.getManifest = function(fullScan, emuPath, checkFiles) {
             {name:"swgemu_live.cfg", size:0, md5:0, url:"http://ode-guild.com/swg/updates/swgemu_live.cfg"}, 
             {name:"user.cfg",  size:0, md5:0, url:"http://ode-guild.com/swg/required/user.cfg"},*/
 			{name:"live.cfg", size:0, md5:0, url:"http://patcher.swgawakening.com/live.cfg"}, 
-			{name:"login.cfg", size:0, md5:0, url:"https://www.dropbox.com/s/9pjhl5t7dh2uuua/login.cfg?dl=1"}, 
-			{name:"options.cfg", size:0, md5:0, url:"https://www.dropbox.com/s/44er1mdn9r9qnbr/options.cfg?dl=1"}, 
-			{name:"preload.cfg", size:0, md5:0, url:"https://www.dropbox.com/s/vqqg7n3rz94b64g/preload.cfg?dl=1"}, 
-			{name:"swgemu.cfg", size:0, md5:0, url:"https://www.dropbox.com/s/23n4ovpin8lk2ie/swgemu.cfg?dl=1"}, 
-			{name:"user.cfg", size:0, md5:0, url:"https://www.dropbox.com/s/n5i0aiu36wd2vbo/user.cfg?dl=1"}, 
-			{name:"local_machine_options.iff", size:0, md5:0, url:"https://www.dropbox.com/s/vaq3ob09rruv24m/local_machine_options.iff?dl=1"}, 
-			{name:"swgemu_machineoptions.iff", size:0, md5:0, url:"https://www.dropbox.com/s/o7p39sqhq3nuy65/swgemu_machineoptions.iff?dl=1"}, 
+			{name:"login.cfg", size:0, md5:0, url:"http://patcher.swgawakening.com/launcher/login.cfg"}, 
+			{name:"options.cfg", size:0, md5:0, url:"http://patcher.swgawakening.com/launcher/options.cfg"}, 
+			{name:"preload.cfg", size:0, md5:0, url:"http://patcher.swgawakening.com/launcher/preload.cfg"}, 
+			{name:"swgemu.cfg", size:0, md5:0, url:"http://patcher.swgawakening.com/launcher/swgemu.cfg"}, 
+			{name:"user.cfg", size:0, md5:0, url:"http://patcher.swgawakening.com/launcher/user.cfg"}, 
+			{name:"swgemu_machineoptions.iff", size:0, md5:0, url:"http://patcher.swgawakening.com/launcher/swgemu_machineoptions.iff"}, 
+			{name:"KSWGProfCalc.dat", size:0, md5:0, url:"http://patcher.swgawakening.com/launcher/KSWGProfCalc.dat"}, 
+			{name:"KSWGProfCalcEditor.exe", size:0, md5:0, url:"http://patcher.swgawakening.com/launcher/KSWGProfCalcEditor.exe"}, 
         ]);
     }
     request({url:server[config.login][0].manifestUrl, json:true}, function(err, response, body) {

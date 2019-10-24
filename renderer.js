@@ -50,6 +50,8 @@ const mainButtonLinks = document.getElementById('mainButtonLinks');
 const patchNotesView = document.getElementById('patchNotesView');
 const patchNotesRefresh = document.getElementById('patchNotesRefresh');
 
+const skillPlanner = document.getElementById('skillPlanner');
+
 const serverStatus = document.getElementById('serverStatus');
 const activeServer = document.getElementById('activeServer');
 const versionDiv = document.getElementById('version');
@@ -89,16 +91,12 @@ getServerStatus(config.login);
 activeServer.innerHTML = server[config.login][0].address;
 
 function getServerStatus(serverStatusLogin) {
-    if (serverStatusLogin != "live") {
-        serverStatus.innerHTML = "unknown";
-    } else {
         request({url:server[serverStatusLogin][0].statusUrl, json:true}, function(err, response, body) {
             if (err) return console.error(err);
             if (body.status != undefined) {
                 serverStatus.innerHTML = body.status;
             }
         });
-    }
 }
 
 minBtn.addEventListener('click', event => remote.getCurrentWindow().minimize());
@@ -139,7 +137,7 @@ ipc.on('setup-begin-install', function (event, args) {
     configPromptClose.setAttribute("data-prompt-value", "setupCompletePrompt");
     configOverlayPrompt("setupCompletePrompt");
     gameConfigSection.style.display = 'block';
-    gameConfigBtn.className = "option-button sr-button sr-btn-icon sr-btn-icon-left active";
+    gameConfigBtn.className = "option-button swga-button swga-btn-icon swga-btn-icon-left active";
     resetProgress();
     if (fs.existsSync(configFile)) {
         config = JSON.parse(fs.readFileSync(configFile));
@@ -173,7 +171,7 @@ ipc.on('setup-begin-install', function (event, args) {
 });*/
 
 function play() {
-    fs.writeFileSync(path.join(config.folder, "swgemu_login.cfg"), `[ClientGame]\r\nloginServerAddress0=${server[config.login][0].address}\r\nloginServerPort0=${server[config.login][0].port}\r\nfreeChaseCameraMaximumZoom=${config.zoom}`);
+    fs.writeFileSync(path.join(config.folder, "login.cfg"), `[ClientGame]\r\nloginServerAddress0=${server[config.login][0].address}\r\nloginServerPort0=${server[config.login][0].port}\r\nfreeChaseCameraMaximumZoom=${config.zoom}`);
     var args = ["--",
         "-s", "ClientGame", "loginServerAddress0=" + server[config.login][0].address, "loginServerPort0=" + server[config.login][0].port,
         "-s", "Station", "gameFeatures=34929",
@@ -189,6 +187,13 @@ function play() {
     }
 }
 
+skillPlanner.addEventListener('click', event => {
+       if (os.platform() === 'win32') {
+        const child = process.spawn("cmd", ["/c", path.join(config.folder, "KSWGProfCalcEditor.exe")], {cwd: config.folder, detached: true, stdio: 'ignore'});
+        child.unref();
+      }
+})
+
 swgOptionsBtn.addEventListener('click', event => {
     if (os.platform() === 'win32') {
         const child = process.spawn("cmd", ["/c", path.join(config.folder, "SWGEmu_Setup.exe")], {cwd: config.folder, detached: true, stdio: 'ignore'});
@@ -202,10 +207,10 @@ swgOptionsBtn.addEventListener('click', event => {
 gameConfigBtn.addEventListener('click', event => {
     if (gameConfigSection.style.display == 'none') {
         gameConfigSection.style.display = 'block';
-        gameConfigBtn.className = "option-button sr-button sr-btn-icon sr-btn-icon-left active";
+        gameConfigBtn.className = "option-button swga-button swga-btn-icon swga-btn-icon-left active";
     } else {
         gameConfigSection.style.display = 'none';
-        gameConfigBtn.className = "option-button sr-button sr-btn-icon sr-btn-icon-left";
+        gameConfigBtn.className = "option-button swga-button swga-btn-icon swga-btn-icon-left";
         configOverlayClose(true);
     }
 });
@@ -324,7 +329,7 @@ loginServerConfirm.addEventListener('click', function (event) {
 helpBtn.addEventListener('click', function (event) {
     if (gameConfigSection.style.display == 'none') {
         gameConfigSection.style.display = 'block';
-        gameConfigBtn.className = "option-button sr-button sr-btn-icon sr-btn-icon-left active";
+        gameConfigBtn.className = "option-button swga-button swga-btn-icon swga-btn-icon-left active";
         configOverlayPrompt("helpInfoPrompt");
     } else {
         if (document.getElementById("configPromptOverlay").style.display == "none") {
@@ -332,7 +337,7 @@ helpBtn.addEventListener('click', function (event) {
         } else {
             if (document.getElementById("helpInfoPrompt").className == "config-prompt active") {
                 gameConfigSection.style.display = 'none';
-                gameConfigBtn.className = "option-button sr-button sr-btn-icon sr-btn-icon-left";
+                gameConfigBtn.className = "option-button swga-button swga-btn-icon swga-btn-icon-left";
                 // Run exit task in case user opened help on top of already opened prompt
                 configOverlayClose(true);
             }
@@ -494,4 +499,5 @@ function saveConfig() {
     fs.writeFileSync(configFile, JSON.stringify(config));
 }
 
-versionDiv.addEventListener('click', event => remote.getCurrentWebContents().openDevTools());
+//versionDiv.addEventListener('click', event => remote.getCurrentWebContents().openDevTools());
+serverStatus.addEventListener('click', event => getServerStatus(config.login));
