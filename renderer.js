@@ -191,6 +191,9 @@ skillPlanner.addEventListener('click', event => {
        if (os.platform() === 'win32') {
         const child = process.spawn("cmd", ["/c", path.join(config.folder, "KSWGProfCalcEditor.exe")], {cwd: config.folder, detached: true, stdio: 'ignore'});
         child.unref();
+      } else {
+        const child = process.exec('wine KSWGProfCalcEditor.exe', {cwd: config.folder, detached: true, stdio: 'ignore'}, function(error, stdout, stderr){});
+        child.unref();
       }
 })
 
