@@ -12,7 +12,6 @@ const path = require('path');
 const os = require('os');
 
 const playBtn = document.getElementById('play');
-//const profcalcBtn = document.getElementById('profcalc');
 
 const cancelBtn = document.getElementById('cancelBtn');
 
@@ -166,10 +165,6 @@ ipc.on('setup-begin-install', function (event, args) {
     }
 });
 
-/*profcalcBtn.addEventListener('click', function (event) {
-    ipc.send('open-profcalc');
-});*/
-
 function play() {
     fs.writeFileSync(path.join(config.folder, "login.cfg"), `[ClientGame]\r\nloginServerAddress0=${server[config.login][0].address}\r\nloginServerPort0=${server[config.login][0].port}\r\nfreeChaseCameraMaximumZoom=${config.zoom}`);
     var args = ["--",
@@ -187,6 +182,7 @@ function play() {
     }
 }
 
+//SKILLPLANNER EXE 
 skillPlanner.addEventListener('click', event => {
        if (os.platform() === 'win32') {
         const child = process.spawn("cmd", ["/c", path.join(config.folder, "KSWGProfCalcEditor.exe")], {cwd: config.folder, detached: true, stdio: 'ignore'});

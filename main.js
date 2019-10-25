@@ -18,6 +18,11 @@ if (!fs.existsSync(configDir))
       return err;
   });
 
+var setupLogFile = configDir + '/SWGAwakening-Launcher-log.txt';
+
+if (!fs.existsSync(setupLogFile))
+  fs.writeFileSync(setupLogFile, "");
+  
 log.transports.file.file = configDir + '/SWGAwakening-Launcher-log.txt';
 autoUpdater.logger = log;
 autoUpdater.logger.transports.file.level = 'info';

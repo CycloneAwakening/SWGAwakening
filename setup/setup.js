@@ -41,7 +41,7 @@ if (fs.existsSync(configFile))
     config = JSON.parse(fs.readFileSync(configFile));
 folderBox.value = config.folder;
 
-//fileCleanUp();
+fileCleanUp();
 
 minBtn.addEventListener('click', event => remote.getCurrentWindow().minimize());
 closeBtn.addEventListener('click', event => remote.getCurrentWindow().close());
@@ -147,7 +147,7 @@ function fileCleanUp() {
     }
 
     if (cleanUpCountValue != 0) {
-        cleanUpFilesSection.style.display = 'block';
+        cleanUpFilesSection.style.display = 'none';//Change to 'block' and uncomment fileCleanUp() to make work
         cleanUpCount.innerHTML = cleanUpCountValue;
         var cleanUpSizeValueGB = (cleanUpSizeValue / Math.pow(1024, 3)).toFixed(2);
         if (cleanUpSizeValueGB > 0.009)
