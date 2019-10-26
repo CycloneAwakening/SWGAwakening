@@ -190,7 +190,7 @@ installBtn.addEventListener('click', function(event) {
 });
 
 ipc.on('install-selected', function (event, dir) {
-    if (fs.existsSync(path.join(dir, 'qt-mt305.dll'))) {
+    if (fs.existsSync(path.join(dir, 'bottom.tre')) && fs.existsSync(path.join(dir, 'data_animation_00.tre')) && fs.existsSync(path.join(dir, 'data_texture_04.tre'))) {
         swgFolderBox.value = dir;
         swgInstallMessageSuccess.style.display = 'block';
         swgInstallMessageFail.style.display = 'none';

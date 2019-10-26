@@ -4,31 +4,31 @@ const {autoUpdater} = require('electron-updater');
 const path = require('path');
 const url = require('url');
 const fs = require('fs');
-const mkdirp = require('mkdirp');
 
 var setupWindow = null;
-var err;
 
-var configDir = require('os').homedir() + '/Documents/My Games/SWG - Awakening';
+var documentsDir = require('os').homedir() + '/Documents';
+var myGamesDir = documentsDir + '/My Games';
+var swgaDir =  myGamesDir + '/SWG - Awakening';
 
-// Create config directory
-if (!fs.existsSync(configDir))
-  err = mkdirp(configDir, function (err) {
-    if (err)
-      return err;
-  });
+if (!fs.existsSync(documentsDir)) {
+  fs.mkdirSync(documentsDir);
+}
 
-var setupLogFile = configDir + '/SWGAwakening-Launcher-log.txt';
+if (!fs.existsSync(myGamesDir))
+  fs.mkdirSync(myGamesDir);
+
+if (!fs.existsSync(swgaDir))
+  fs.mkdirSync(swgaDir);
+
+var setupLogFile = swgaDir + '/SWGAwakening-Launcher-log.txt';
 
 if (!fs.existsSync(setupLogFile))
-  fs.writeFileSync(setupLogFile, "");
+  fs.writeFileSync(setupLogFile, " ");
   
-log.transports.file.file = configDir + '/SWGAwakening-Launcher-log.txt';
+log.transports.file.file = swgaDir + '/SWG-Launcher-log.txt';
 autoUpdater.logger = log;
 autoUpdater.logger.transports.file.level = 'info';
-
-if (err !== undefined)
-  log.info(err);
 
 let mainWindow;
 
