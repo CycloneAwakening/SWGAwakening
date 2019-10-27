@@ -340,8 +340,9 @@ hr {
   margin-top: 3px;
 }
 .button-link {
-  width: 24.5%;
+  width: 20%;
   height: 100%;
+  margin-right: 27px;
   display: inline-block;
   background-size: auto;
   background-position: bottom center;
@@ -358,6 +359,7 @@ hr {
 }
 .button-link.button-skillplanner {
   background: transparent; 
+  cursor: pointer;
   border: none;  
   background-image: url("./img/buttons/btn-link-skillplanner.png");
   background-repeat: no-repeat;
