@@ -1,8 +1,8 @@
 # SWG Awakening Launcher
 
-**Electron application based on [dpwhitter's RoC Launcher](https://github.com/dpwhittaker/RoC-Launcher) and [Tyclo's Adaptation](https://github.com/DesporoWace/SR-Launcher) **
+**Electron application based on [dpwhittaker's RoC Launcher](https://github.com/dpwhittaker/RoC-Launcher) and [Tyclo's Adaptation](https://github.com/DesporoWace/SR-Launcher) **
 
-**All graphics are either property of SWG Awakening or their respective authors**
+**All graphics are either property of SWG Awakening or their respective authors. Consult before use**
 
 ## Features
 
