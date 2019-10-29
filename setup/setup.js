@@ -35,7 +35,7 @@ const agreeCleanUp = document.getElementById('agreeCleanUp');
 const cleanUpCount = document.getElementById('cleanUpCount');
 const cleanUpSize = document.getElementById('cleanUpSize');
 
-const configFile = require('os').homedir() + '/Documents/My Games/SWG Awakening/SWG-Awakening-Launcher-config.json';
+const configFile = require('os').homedir() + '/Documents/My Games/SWG - Awakening/SWG-Awakening-Launcher-config.json';
 var config = {folder: 'C:\\SWGAwakening'};
 if (fs.existsSync(configFile))
     config = JSON.parse(fs.readFileSync(configFile));
@@ -180,7 +180,7 @@ ipc.on('selected-directory', function (event, path) {
     folderBox.value = path;
     config.folder = path;
     saveConfig();
-    //fileCleanUp();
+    fileCleanUp();
 });
 
 installBtn.addEventListener('click', function(event) {
