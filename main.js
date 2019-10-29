@@ -62,7 +62,6 @@ function createWindow() {
 
 app.on('ready', () => setTimeout(createWindow, 100)); // Linux / MacOS transparancy fix
 app.on('window-all-closed', () => app.quit());
-//mainWindow.on('focus', () => mainWindown.setSize(1130, 610));
 
 
 ipcMain.on('open-directory-dialog', function (event, response) {
