@@ -40,6 +40,8 @@ function createWindow() {
     fullscreen: false,
     fullscreenable: false,
     maximizable: false,
+	minWidth: 1130,
+    minHeight: 610,
     maxWidth: 1130,
     maxHeight: 610,
     transparent: true,
@@ -60,6 +62,8 @@ function createWindow() {
 
 app.on('ready', () => setTimeout(createWindow, 100)); // Linux / MacOS transparancy fix
 app.on('window-all-closed', () => app.quit());
+//mainWindow.on('focus', () => mainWindown.setSize(1130, 610));
+
 
 ipcMain.on('open-directory-dialog', function (event, response) {
   dialog.showOpenDialog({
@@ -106,16 +110,6 @@ ipcMain.on('setup-complete', (event, arg) => {
   mainWindow.webContents.send('setup-begin-install', arg);
 });
 
-
-ipcMain.on('open-profcalc', function() {
-  window = new BrowserWindow({width: 1296, height: 839, autoHideMenuBar: true});
-  window.loadURL(url.format({
-    pathname: path.join(__dirname, 'profcalc', 'index.html'),
-    protocol: 'file:',
-    slashes: true
-  }));
-  //if (require('electron-is-dev')) window.webContents.openDevTools();
-});
 
 autoUpdater.on('update-downloaded', (info) => {
   autoUpdater.quitAndInstall();
