@@ -6,6 +6,7 @@ const url = require('url');
 const fs = require('fs');
 
 var setupWindow = null;
+var err;
 
 var documentsDir = require('os').homedir() + '/Documents';
 var myGamesDir = documentsDir + '/My Games';
@@ -26,9 +27,12 @@ var setupLogFile = swgaDir + '/SWGAwakening-Launcher-log.txt';
 if (!fs.existsSync(setupLogFile))
   fs.writeFileSync(setupLogFile, " ");
   
-log.transports.file.file = swgaDir + '/SWG-Launcher-log.txt';
+log.transports.file.file = swgaDir + '/SWGAwakening-Launcher-log.txt';
 autoUpdater.logger = log;
 autoUpdater.logger.transports.file.level = 'info';
+
+if (err !== undefined)
+log.info(err);
 
 let mainWindow;
 

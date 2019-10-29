@@ -1,7 +1,7 @@
 {
   "name": "swg-awakening-launcher",
-  "version": "1.0.3",
-  "description": "Version 1.0.3",
+  "version": "1.0.6",
+  "description": "SWG Awakening Launcher",
   "main": "main.js",
   "scripts": {
     "start": "electron .",
