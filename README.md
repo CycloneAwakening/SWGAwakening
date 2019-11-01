@@ -4,6 +4,8 @@
 
 **All graphics are either property of SWG Awakening or their respective authors. Consult before use**
 
+**Launcher background by [Fantasio](https://www.fantasio.info/)**
+
 ## Features
 
 The SWG Awakening Launcher includes a new user friendly interface, a guided set up process, patching for multiple login servers and Linux/macOS compatibility. Also included are many other miscellaneous tweaks, improvements and new features.
