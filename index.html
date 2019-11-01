@@ -8,9 +8,7 @@
     </style>
   </head>
   <body>
-	<audio autoplay>
-	<source src="./sound/awakening.mp3" type="audio/mpeg">
-	</audio>
+	<audio id="launcherSound" src="" type="audio/mpeg" autoplay></audio>
     <div class="launcher-wrap">
       <div class="launcher-bg"></div>
       <div class="main-section">
@@ -137,7 +135,7 @@
                     <div class="config-prompt-arrow"></div>
                   </div>
                 </div>
-                <div class="config-section-header">Game Config</div>
+                <div class="config-section-header">Game &amp Launcher Settings</div>
                 <div class="config-options">
                   <div class="config-col left-col">
                     <div class="swga-folder">
@@ -172,6 +170,10 @@
                         </div>
                       </div>
                     </div>
+					<div class="swga-checkbox">
+						<input type="checkbox" id="enableSounds" name="enableSounds" value="agreed">
+						<label for="enableSounds">Enable Launcher Sounds</label>
+					</div>
                   </div>
                   <div class="config-col right-col">
                     <div class="swga-swg-config">
@@ -224,7 +226,7 @@
             <div class="right-section-container">
               <div class="options-buttons">
                 <button id="swgOptionsBtn" class="option-button swga-button swga-btn-icon swga-btn-icon-left">SWG Options</button>
-                <button id="gameConfigBtn" class="option-button swga-button swga-btn-icon swga-btn-icon-left">Game Config</button>
+                <button id="gameConfigBtn" class="option-button swga-button swga-btn-icon swga-btn-icon-left">Settings</button>
               </div>
               <div id="mainButtonLinks">
                 <a href="http://galaxyharvester.net/ghHome.py?" class="button-link button-resources"></a>

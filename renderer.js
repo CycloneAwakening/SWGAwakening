@@ -59,10 +59,24 @@ versionDiv.innerHTML = package.version;
 const configFile = os.homedir() + '/Documents/My Games/SWG - Awakening/SWG-Awakening-Launcher-config.json';
 var config = {folder: 'C:\\SWGAwakening'};
 
+const launchSound = document.getElementById('launcherSound');
+const enableSounds = document.getElementById('enableSounds');
+
 if (fs.existsSync(configFile))
     config = JSON.parse(fs.readFileSync(configFile));
 gameDirBox.value = config.folder;
 var needSave = false;
+
+if ((config.soundsrc != " ") && (config.soundsrc != "./sound/awakening.mp3")) {
+    config.soundsrc = "./sound/awakening.mp3";
+    needSave = true;
+}
+launchSound.src = config.soundsrc;
+if (config.soundsrc == "./sound/awakening.mp3")  {
+	enableSounds.checked = true;
+} else {
+	enableSounds.checked = false;
+}
 if (!config.fps) {
     config.fps = 60;
     needSave = true;
@@ -249,9 +263,28 @@ patchNotesRefresh.addEventListener('click', function(e) {
     patchNotesView.style.opacity = '0';
 });
 
-// -----------------
-//    Game Config
-// -----------------
+/*
+ * ---------------------
+ *    Launcher Config
+ * ---------------------
+ */
+ 
+enableSounds.addEventListener('click', function (event) {
+    if (enableSounds.checked) {
+		config.soundsrc = "./sound/awakening.mp3";
+		saveConfig();
+    } else {
+		config.soundsrc = " ";
+		saveConfig();
+		launchSound.src = config.soundsrc;
+    }
+});
+
+/* 
+ * -----------------
+ *    Game Config
+ * -----------------
+ */
 
 // SWG Config
 fpsSel.addEventListener('change', event => {

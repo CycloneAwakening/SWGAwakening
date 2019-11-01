@@ -1021,6 +1021,19 @@ button.tooltip:hover {
   background-repeat: no-repeat;
 }
 
+.config-prompt-overlay #launcherSettings p {
+  margin:  0 0 9px;
+}
+.config-prompt-overlay #launcherSettings .config-label {
+  margin: 0 0 9px;
+}
+.config-prompt-overlay #launcherSettings .config-options {
+  background-image: url("./img/swga-mini-logo-grey.png");
+  background-size: auto;
+  background-position: 96% 92%;
+  background-repeat: no-repeat;
+}
+
 .config-prompt-overlay #setupCompletePrompt .config-options {
   background-image: url("./img/swga-mini-logo-grey.png");
   background-size: auto;
@@ -1092,4 +1105,50 @@ button.tooltip:hover {
 @keyframes spin {
   from {transform:rotate(0deg);}
   to {transform:rotate(360deg);}
+}
+
+.swga-checkbox {
+  margin-top: 6px;
+}
+.swga-checkbox input[type="checkbox"] {
+  margin: 0;
+  width: 14px;
+  height: 14px;
+  position: relative;
+  cursor: pointer;
+}
+.swga-checkbox input[type="checkbox"]:after {
+  content: "";
+  display: block;
+  width: 15px;
+  height: 15px;
+  background-color: #87CEEB;
+  border: 2px solid #00688B;
+  -webkit-transition: all 0.1s linear;
+  transition: all 0.1s linear;
+}
+.swga-checkbox input[type="checkbox"]:checked:after {
+  content: "";
+  display: inline-block;
+  background-color: #00688B;
+  border-color: #87CEEB;
+}
+.swga-checkbox input[type="checkbox"]:checked:before {
+  content: "\2713";
+  position: absolute;
+  left: 2px;
+  top: -2.5px;
+  font-size: 13px;
+  font-weight: 600;
+  color: #fff;
+}
+.swga-checkbox label {
+  font-family: 'swga-font';
+  font-size: 12px;
+  font-weight: 600;
+  margin-left: 6px;
+  position: relative;
+  top: -3px;
+  padding: 2px 0;
+  cursor: pointer;
 }
