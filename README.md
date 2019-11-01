@@ -3,7 +3,8 @@
 **Electron application based on [dpwhittaker's RoC Launcher](https://github.com/dpwhittaker/RoC-Launcher) and [Tyclo's Adaptation](https://github.com/DesporoWace/SR-Launcher) **
 
 **All graphics are either property of SWG Awakening or their respective authors. Consult before use**
-**Launcher background by [Fantasio](https://www.fantasio.info/) **
+
+**Launcher background by [Fantasio](https://www.fantasio.info/)**
 
 ## Features
 
