@@ -365,6 +365,9 @@ hr {
   background-repeat: no-repeat;
   background-position: center;
 }
+.button-link.button-skillplanner:disabled {
+  cursor: not-allowed;
+}
 .button-link.button-topg {
   background-image: url("./img/buttons/btn-link-topg.png");
 }
@@ -587,6 +590,7 @@ hr {
 }
 #serverStatus {
   width: 56px;
+  cursor: pointer;
 }
 #activeServer {
   width: 150px;
@@ -1151,4 +1155,55 @@ button.tooltip:hover {
   top: -3px;
   padding: 2px 0;
   cursor: pointer;
+}
+
+[tooltipskill]{
+  position:relative;
+  display:inline-block;
+}
+[tooltipskill]::before {
+  content: "";
+  position: absolute;
+  top:-6px;
+  left:50%;
+  transform: translateX(-50%);
+  border-width: 4px 6px 0 6px;
+  border-style: solid;
+  border-color: rgba(20,20,20,0.95) transparent transparent transparent;
+  z-index: 99;
+  opacity:0;
+  -webkit-transition: opacity 0.1s ease;
+  transition: opacity 0.1s ease;
+}
+[tooltipskill-position='top']::before{
+  left:50%;
+}
+[tooltipskill]::after {
+  content: attr(tooltipskill);
+  position: absolute;
+  left:50%;
+  top:-6px;
+  transform: translateX(-50%) translateY(-100%);
+  background: rgba(20,20,20,0.95);
+  text-align: center;
+  color: #fff;
+  font-size: 12px;
+  min-width: 200px;
+  text-transform: initial;
+  border-radius: 2px;
+  pointer-events: none;
+  padding: 9px 6px;
+  z-index: 99;
+  opacity:0;
+  -webkit-transition: opacity 0.1s ease;
+  transition: opacity 0.1s ease;
+}
+[tooltipskill-position='top']::after{
+  left:50%;
+}
+[tooltipskill]:hover::after,[tooltip]:hover::before {
+   opacity:1
+}
+[tooltipskill]:enabled::after,[tooltip]:enabled::before {
+   opacity:0
 }

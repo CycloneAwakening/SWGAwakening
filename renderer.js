@@ -501,6 +501,7 @@ if (fs.existsSync(path.join(config.folder, 'qt-mt305.dll'))) {
     loginServerConfirm.disabled = true;
     swgOptionsBtn.disabled = true;
     cancelBtn.disabled = true;
+	skillPlanner.disabled = true;
 }
 
 function disableAll(cancel) {
@@ -511,6 +512,7 @@ function disableAll(cancel) {
     loginServerSel.disabled = true;
     loginServerConfirm.disabled = true;
     helpBtn.disabled = true;
+	skillPlanner.disabled = true;
     if (cancel == true)
         cancelBtn.disabled = false;
 }
@@ -525,6 +527,7 @@ function enableAll() {
     loginServerSel.disabled = false;
     loginServerConfirm.disabled = false;
     helpBtn.disabled = false;
+	skillPlanner.disabled = false;
 }
 
 function saveConfig() {
