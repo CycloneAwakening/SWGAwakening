@@ -589,6 +589,7 @@ hr {
   overflow: hidden;
 }
 #serverStatus {
+  color: #CC1100;
   width: 56px;
   cursor: pointer;
 }

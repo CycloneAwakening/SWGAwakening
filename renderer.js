@@ -106,7 +106,25 @@ activeServer.innerHTML = server[config.login][0].address;
 function getServerStatus(serverStatusLogin) {
         request({url:server[serverStatusLogin][0].statusUrl, json:true}, function(err, response, body) {
             if (err) return console.error(err);
+			if (body.status == undefined) {
+				serverStatus.style.color = '#CC1100';
+			}
             if (body.status != undefined) {
+				if(body.status == "Online")  {
+					serverStatus.style.color = 'green';
+				}
+				if(body.status == "Offline")  {
+					serverStatus.style.color = '#CC1100';
+				}
+				if(body.status == "Loading")  {
+					serverStatus.style.color = 'yellow';
+				}
+				if(body.status == "Locked")  {
+					serverStatus.style.color = '#FF7722';
+				}
+				if (body.status == "Unknown") {
+					serverStatus.style.color = '#CC1100';
+				}
                 serverStatus.innerHTML = body.status;
             }
         });
@@ -205,7 +223,7 @@ skillPlanner.addEventListener('click', event => {
         const child = process.exec('wine KSWGProfCalcEditor.exe', {cwd: config.folder, detached: true, stdio: 'ignore'}, function(error, stdout, stderr){});
         child.unref();
       }
-})
+});
 
 swgOptionsBtn.addEventListener('click', event => {
     if (os.platform() === 'win32') {
@@ -215,7 +233,7 @@ swgOptionsBtn.addEventListener('click', event => {
         const child = process.exec('wine SWGEmu_Setup.exe', {cwd: config.folder, detached: true, stdio: 'ignore'}, function(error, stdout, stderr){});
         child.unref();
       }
-})
+});
 
 gameConfigBtn.addEventListener('click', event => {
     if (gameConfigSection.style.display == 'none') {
@@ -536,3 +554,9 @@ function saveConfig() {
 
 //versionDiv.addEventListener('click', event => remote.getCurrentWebContents().openDevTools());
 serverStatus.addEventListener('click', event => getServerStatus(config.login));
+
+function serverStatLoop () {
+	getServerStatus(config.login);
+    setTimeout(serverStatLoop, 10000);
+}
+serverStatLoop();
