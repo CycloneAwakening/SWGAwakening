@@ -38,16 +38,16 @@ let mainWindow;
 
 function createWindow() {
   mainWindow = new BrowserWindow({
-    width: 1130,
-    height: 610,
+    width: 1123,
+    height: 602,
     resizable: false,
     fullscreen: false,
     fullscreenable: false,
     maximizable: false,
-	minWidth: 1130,
-    minHeight: 610,
-    maxWidth: 1130,
-    maxHeight: 610,
+	minWidth: 1123,
+    minHeight: 602,
+    maxWidth: 1123,
+    maxHeight: 602,
     transparent: true,
     show: false,
     autoHideMenuBar: true,

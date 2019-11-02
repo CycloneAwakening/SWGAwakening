@@ -78,16 +78,16 @@ html {
 }
 
 .launcher-wrap {
-  width: 1130px;
-  height: 610px;
+  width: 1123px;
+  height: 602px;
   position: relative;
 }
 .launcher-bg {
   position: absolute;
   left:0px;
   top:0px;
-  width: 1130px;
-  height: 610px;
+  width: 1123px;
+  height: 602px;
   z-index: -1;
   background-image: url("./img/swga-background.png");
   background-size: auto;
