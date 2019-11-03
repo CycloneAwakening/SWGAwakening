@@ -287,7 +287,7 @@ hr {
 }
 .patch-notes-wrapper .patch-notes-view {
  /*WEB PANEL EDIT WIDTH*/
-  width: 100%;
+  width: 406px;
   height: 100%;
   opacity: 0;
   -webkit-transition: opacity 0.2s linear;
