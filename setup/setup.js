@@ -8,6 +8,7 @@ const install = require('../install');
 const path = require('path');
 
 const sidebarLinks = document.getElementById('sidebarLinks');
+const rulesAgree = document.getElementById('rulesAgree');
 
 const folderBox = document.getElementById('folder'); // SWG Awakening Folder Location
 const browseBtn = document.getElementById('browse'); // Set Installation Location Button
@@ -159,6 +160,10 @@ function fileCleanUp() {
     }
 }
 
+rulesAgree.addEventListener('click', function(e) {
+    e.preventDefault();
+    shell.openExternal(e.target.href);
+});
 
 sidebarLinks.addEventListener('click', function(e) {
     e.preventDefault();

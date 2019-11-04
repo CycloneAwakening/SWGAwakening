@@ -206,7 +206,7 @@ html {
 }
 
 a {
-  color: #87CEEB;
+  color: #A39598;
   text-decoration: none;
   -webkit-transition: all 0.2s ease;
   transition: all 0.2s ease;
@@ -251,7 +251,7 @@ hr {
 #headerLinks > .text-link:hover, #headerLinks > .text-link:active, #headerLinks > .text-link:focus {
   color: #403f3f;
 }
-#headerLinks > .patch-notes-title {
+#headerLinks > .news-updates-title {
   font-size: 27px;
   color: #000;
   padding: 1px 14px 0 0;
@@ -278,14 +278,14 @@ hr {
   opacity: 0.65;
 }
 
-.patch-notes-wrapper {
+.news-updates-wrapper {
   height: 365px;
   width: 100%;
   position: relative;
-  background-color: rgba(255,255,255,0.9);
-  border: 2px solid #87CEEB;
+  background-color: rgba(250, 248, 240,0.9);
+  border: 2px solid #292225;
 }
-.patch-notes-wrapper .patch-notes-view {
+.news-updates-wrapper .news-updates-view {
  /*WEB PANEL EDIT WIDTH*/
   width: 406px;
   height: 100%;
@@ -293,7 +293,7 @@ hr {
   -webkit-transition: opacity 0.2s linear;
   transition: opacity 0.2s linear;
 }
-.patch-notes-wrapper .patch-notes-refresh {
+.news-updates-wrapper .news-updates-refresh {
   position: absolute;
   top: 14px;
   right: 24px;
@@ -310,17 +310,17 @@ hr {
   -webkit-transition: opacity 0.2s linear;
   transition: opacity 0.2s linear;
 }
-.patch-notes-wrapper:hover .patch-notes-refresh {
+.news-updates-wrapper:hover .news-updates-refresh {
   opacity: 0.5;
 }
-.patch-notes-wrapper:hover .patch-notes-refresh:hover {
+.news-updates-wrapper:hover .news-updates-refresh:hover {
   opacity: 0.8;
 }
-.patch-notes-wrapper .patch-notes-refresh.spinner {
+.news-updates-wrapper .news-updates-refresh.spinner {
   cursor: default;
   opacity: 0.8 !important;
 }
-.patch-notes-wrapper .patch-notes-refresh.hidden {
+.news-updates-wrapper .news-updates-refresh.hidden {
   cursor: default;
   opacity: 0 !important;
 }
@@ -383,15 +383,15 @@ hr {
   !color: #fff;
   cursor: pointer;
   padding: 9px 18px;
-  border: 1px solid #87CEEB;
-  background-color: #87CEEB;
+  border: 1px solid #292225;
+  background-color: #A39598;
   outline: none;
   -webkit-transition: all 0.1s linear;
   transition: all 0.1s linear;
 }
 .swga-button:hover {
   color: #000;
-  border-color: #87CEEB;
+  border-color: #292225;
   background-color: #FFFFFF;
 }
 .swga-button:active {
@@ -402,7 +402,7 @@ hr {
 .swga-button:disabled {
   cursor: not-allowed;
   background-color: #140d0d !important;
-  border-color: #87CEEB !important;
+  border-color: #A39598 !important;
 }
 
 .swga-button.swga-btn-icon {
@@ -491,8 +491,8 @@ hr {
   text-transform: uppercase;
   cursor: pointer;
   padding: 8px 0;
-  border: 1px solid #87CEEB;
-  background-color: #87CEEB;
+  border: 1px solid #292225;
+  background-color: #A39598;
   -webkit-transition: all 0.1s linear;
   transition: all 0.1s linear;
 }
@@ -509,7 +509,7 @@ hr {
 .play-button-container #play:disabled {
   cursor: not-allowed;
   background-color: #140d0d !important;
-  border-color: #87CEEB !important;
+  border-color: #292225 !important;
 }
 
 #cancelBtn {
@@ -532,7 +532,7 @@ hr {
 #cancelBtn:active {
   color: rgba(255,255,255,0.85);
 }
-#cancelBtn: focus {
+#cancelBtn:focus {
   color: rgba(255,255,255,0.7);
 }
 #cancelBtn:disabled {
@@ -564,8 +564,8 @@ hr {
 
 #progress {
   height: 8px;
-  background: -webkit-linear-gradient(left, rgba(135, 206, 235,1) 0%,rgba(135, 206, 235,1) 85%,rgba(200, 200, 200,1) 100%);
-  background: linear-gradient(to right, rgba(135, 206, 235,1) 0%,rgba(135, 206, 235,1) 85%,rgba(200, 200, 200,1) 100%);
+  background: -webkit-linear-gradient(left, rgba(137, 108, 92,1) 0%,rgba(137, 108, 92,1) 85%,rgba(200, 200, 200,1) 100%);
+  background: linear-gradient(to right, rgba(137, 108, 92,1) 0%,rgba(137, 108, 92,1) 85%,rgba(200, 200, 200,1) 100%);
 }
 .server-stats {
   color: #fff;
@@ -607,7 +607,7 @@ hr {
   height: 200px;
   position: relative;
   background-color: rgba(255,255,255,0.97);
-  border: 2px solid #87CEEB;
+  border: 2px solid #A39598;
   box-shadow: 0 2px 9px rgba(0,0,0,0.3);
 }
 .config-section-arrow {
@@ -628,14 +628,14 @@ hr {
   height: 30px;
   background-color: rgba(255,255,255,0.97);
   border-right: 2px solid #FFFFFF;
-  border-bottom: 2px solid #00688B;
+  border-bottom: 2px solid #896C5C;
   transform: rotate(45deg);
   box-shadow: 0 2px 9px rgba(0,0,0,0.3);
 }
 .config-section-header {
   width: 100%;
   padding: 4px 6px;
-  background-color: #00688B;
+  background-color: #896C5C;
   color: #000;
   font-family: 'swga-font';
   font-weight: 600;
@@ -711,7 +711,7 @@ hr {
   text-transform: uppercase;
   padding-bottom: 2px;
   margin: 0 0 4px;
-  border-bottom: 1px solid #87CEEB;
+  border-bottom: 1px solid #A39598;
 }
 .swga-button-sm {
   font-family: 'Helvetica', 'Arial', sans-serif;
@@ -720,8 +720,8 @@ hr {
   cursor: pointer;
   font-weight: 600;
   padding: 6px 8px;
-  border: 1px solid #87CEEB;
-  background-color: #87CEEB;
+  border: 1px solid #292225;
+  background-color: #A39598;
   -webkit-transition: all 0.1s linear;
   transition: all 0.1s linear;
 }
@@ -737,7 +737,7 @@ hr {
   cursor: not-allowed;
   color: #444;
   background-color: #140d0d !important;
-  border-color: #87CEEB !important;
+  border-color: #A39598 !important;
 }
 .swga-button-sm:disabled:hover {
   color: #000;
@@ -760,7 +760,7 @@ a.swga-button-sm:active {
 }
 a.swga-button-sm:focus {
   color: #000;
-  border-color: #00688B;
+  border-color: #292225;
   background-color: #FFFFFF;
 }
 
@@ -777,7 +777,7 @@ input {
   transition: all 0.1s linear;
 }
 input:focus {
-  border-bottom: 1px solid #87CEEB;
+  border-bottom: 1px solid #A39598;
   outline: none !important;
 }
 #browse {
@@ -821,7 +821,7 @@ select {
   transition: all 0.1s linear;
 }
 select:focus {
-  border-bottom: 1px solid #b80000;
+  border-bottom: 1px solid #A39598;
   outline: none !important;
 }
 
@@ -1041,7 +1041,7 @@ button.tooltip:hover {
 
 .config-prompt-overlay #setupCompletePrompt .config-options {
   background-image: url("./img/swga-mini-logo-grey.png");
-  background-size: auto;
+  background-size: 20px;
   background-position: 96% 6%;
   background-repeat: no-repeat;
 }
@@ -1087,15 +1087,15 @@ button.tooltip:hover {
 }
 
 @keyframes noticeMeSenpai {
-  0%  { background-color: #87CEEB; }
+  0%  { background-color: #A39598; }
   20% { background-color: #FFFFFF; }
-  40% { background-color: #87CEEB; }
+  40% { background-color: #A39598; }
 }
 
 @-webkit-keyframes noticeMeSenpai {
-  0%  { background-color: #87CEEB; }
+  0%  { background-color: #A39598; }
   20% { background-color: #FFFFFF; }
-  40% { background-color: #87CEEB; }
+  40% { background-color: #A39598; }
 }
 
 .spinner {
@@ -1127,16 +1127,16 @@ button.tooltip:hover {
   display: block;
   width: 15px;
   height: 15px;
-  background-color: #87CEEB;
-  border: 2px solid #00688B;
+  background-color: #A39598;
+  border: 2px solid #896C5C;
   -webkit-transition: all 0.1s linear;
   transition: all 0.1s linear;
 }
 .swga-checkbox input[type="checkbox"]:checked:after {
   content: "";
   display: inline-block;
-  background-color: #00688B;
-  border-color: #87CEEB;
+  background-color: #896C5C;
+  border-color: #A39598;
 }
 .swga-checkbox input[type="checkbox"]:checked:before {
   content: "\2713";

@@ -46,8 +46,8 @@ const zoomSel = document.getElementById('zoom');
 // External Links
 const headerLinks = document.getElementById("headerLinks");
 const mainButtonLinks = document.getElementById('mainButtonLinks');
-const patchNotesView = document.getElementById('patchNotesView');
-const patchNotesRefresh = document.getElementById('patchNotesRefresh');
+const newsUpdatesView = document.getElementById('newsUpdatesView');
+const newsUpdatesRefresh = document.getElementById('newsUpdatesRefresh');
 
 const skillPlanner = document.getElementById('skillPlanner');
 
@@ -258,27 +258,27 @@ mainButtonLinks.addEventListener('click', function(e) {
         shell.openExternal(e.target.href);
 });
 
-patchNotesView.addEventListener('will-navigate', function(e) {
+newsUpdatesView.addEventListener('will-navigate', function(e) {
     const protocol = require('url').parse(e.url).protocol;
     if (protocol === 'http:' || protocol === 'https:')
         shell.openExternal(e.url);
-    patchNotesView.stop();
+    newsUpdatesView.stop();
 });
 
-patchNotesView.addEventListener('dom-ready', function(e) {
-    patchNotesRefresh.className = 'patch-notes-refresh hidden';
-    patchNotesView.style.opacity = '1';
+newsUpdatesView.addEventListener('dom-ready', function(e) {
+    newsUpdatesRefresh.className = 'news-updates-refresh hidden';
+    newsUpdatesView.style.opacity = '1';
     setTimeout(function(){
-        patchNotesRefresh.disabled = false;
-        patchNotesRefresh.className = 'patch-notes-refresh';
+        newsUpdatesRefresh.disabled = false;
+        newsUpdatesRefresh.className = 'news-updates-refresh';
     }, 2000);
 });
 
-patchNotesRefresh.addEventListener('click', function(e) {
-    patchNotesRefresh.disabled = true;
-    patchNotesRefresh.className = 'patch-notes-refresh spinner';
-    patchNotesView.reloadIgnoringCache();
-    patchNotesView.style.opacity = '0';
+newsUpdatesRefresh.addEventListener('click', function(e) {
+    newsUpdatesRefresh.disabled = true;
+    newsUpdatesRefresh.className = 'news-updates-refresh spinner';
+    newsUpdatesView.reloadIgnoringCache();
+    newsUpdatesView.style.opacity = '0';
 });
 
 /*

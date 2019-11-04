@@ -24,6 +24,17 @@ hr {
   margin: 14px 0;
   border-top: 1px solid #999;
 }
+
+a {
+  color: #A39598;
+  text-decoration: none;
+  -webkit-transition: all 0.2s ease;
+  transition: all 0.2s ease;
+}
+a:hover, a:active, a:focus {
+  color: #B5B3B3;
+}
+
 /* Fonts */
 @font-face {
   font-family: 'swga-font';
