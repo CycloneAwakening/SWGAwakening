@@ -18,6 +18,9 @@ const cancelBtn = document.getElementById('cancelBtn');
 const progressBar = document.getElementById('progress');
 const progressText = document.getElementById('progresstext');
 
+const donationBar = document.getElementById('donation');
+const donationText = document.getElementById('donationtext');
+
 const helpBtn = document.getElementById('help');
 const minBtn = document.getElementById('minimize');
 const closeBtn = document.getElementById('close');
@@ -52,6 +55,7 @@ const newsUpdatesRefresh = document.getElementById('newsUpdatesRefresh');
 const skillPlanner = document.getElementById('skillPlanner');
 
 const serverStatus = document.getElementById('serverStatus');
+const serverUptime = document.getElementById('serverUptime');
 const activeServer = document.getElementById('activeServer');
 const versionDiv = document.getElementById('version');
 versionDiv.innerHTML = package.version;
@@ -101,14 +105,13 @@ loginServerSel.setAttribute("data-previous", config.login);
 if (needSave) saveConfig();
 
 getServerStatus(config.login);
+getServerUptime(config.login);
+getDonationProgress(config.login);
 activeServer.innerHTML = server[config.login][0].address;
 
 function getServerStatus(serverStatusLogin) {
         request({url:server[serverStatusLogin][0].statusUrl, json:true}, function(err, response, body) {
             if (err) return console.error(err);
-			if (body.status == undefined) {
-				serverStatus.style.color = '#CC1100';
-			}
             if (body.status != undefined) {
 				if(body.status == "Online")  {
 					serverStatus.style.color = 'green';
@@ -124,9 +127,34 @@ function getServerStatus(serverStatusLogin) {
 				}
 				if (body.status == "Unknown") {
 					serverStatus.style.color = '#CC1100';
+					getServerStatus(serverStatusLogin);
 				}
                 serverStatus.innerHTML = body.status;
             }
+        });
+}
+
+function getServerUptime(serverUptimeLogin) {
+        request({url:server[serverUptimeLogin][0].statusUrl, json:true}, function(err, response, body) {
+            if (err) return console.error(err);
+				serverUptime.innerHTML = body.uptime;
+				if (body.uptime == "00:00:00") {
+					getServerUptime(serverUptimeLogin);
+				}
+        });
+}
+
+function getDonationProgress(serverDonationLogin) {
+        request({url:server[serverDonationLogin][0].statusUrl, json:true}, function(err, response, body) {
+            if (err) return console.error(err);
+			if (body.donation-goal != 0) {
+				var goal = body.donation-goal;
+				var received = body.donations-received;
+				donationText.innerHTML = 'Donation Statistics: $' + received + ' received of the $' + goal + ' goal (' + Math.trunc(received * 100 / goal) + '%).';
+				if ((received * 100 / goal) <= 100) {
+					donationBar.style.width = (received * 100 / goal) + '%';
+				}
+			}
         });
 }
 
@@ -364,11 +392,15 @@ loginServerConfirm.addEventListener('click', function (event) {
     saveConfig();
     loginServerSel.setAttribute("data-previous", config.login);
     activeServer.className = "no-opacity";
-    setTimeout(function(){activeServer.className = "fade-in";},200);
+    setTimeout(function(){activeServer.className = "fade-in";},1000);
     activeServer.innerHTML = server[config.login][0].address;
     serverStatus.className = "no-opacity";
-    setTimeout(function(){serverStatus.className = "fade-in";},200);
+    setTimeout(function(){serverStatus.className = "fade-in";},1000);
+	serverUptime.className = "no-opacity";
+    setTimeout(function(){serverUptime.className = "fade-in";},1000);
     getServerStatus(config.login);
+	getServerUptime(config.login);
+	getDonationProgress(config.login);
     disableAll(true);
     resetProgress();
     install.install(config.folder, config.folder, false);
@@ -554,9 +586,12 @@ function saveConfig() {
 
 //versionDiv.addEventListener('click', event => remote.getCurrentWebContents().openDevTools());
 serverStatus.addEventListener('click', event => getServerStatus(config.login));
+serverUptime.addEventListener('click', event => getServerUptime(config.login));
 
 function serverStatLoop () {
 	getServerStatus(config.login);
-    setTimeout(serverStatLoop, 10000);
+	getServerUptime(config.login);
+	getDonationProgress(config.login);
+    setTimeout(serverStatLoop, 20000);
 }
 serverStatLoop();

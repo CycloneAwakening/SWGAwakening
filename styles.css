@@ -288,7 +288,7 @@ hr {
 .news-updates-wrapper .news-updates-view {
  /*WEB PANEL EDIT WIDTH*/
   width: 406px;
-  height: 100%;
+  height: 88.5%;
   opacity: 0;
   -webkit-transition: opacity 0.2s linear;
   transition: opacity 0.2s linear;
@@ -540,6 +540,41 @@ hr {
   cursor: default;
 }
 
+#donationtext {
+  font-family: 'swga-font';
+  font-weight: 600;
+  font-size: 15px;
+  margin-top: 4px;
+  margin-left: 2%;
+  color: rgba(0,0,0,1);
+  -webkit-transition: color 0.1s linear;
+  transition: color 0.1s linear;
+}
+#donationtext.complete {
+  color: rgba(0,0,0,0);
+}
+.donation-bar {
+  height: 10px;
+  width: 95%;
+  margin-left: 2%;
+  margin-top: 4px;
+  background-color: #fff;
+  border: 1px solid #292225;
+}
+#donation {
+  height: 8px;
+  background: -webkit-linear-gradient(left, rgba(50,205,50,1) 0%,rgba(50,205,50,1) 85%,rgba(200, 200, 200,1) 100%);
+  background: linear-gradient(to right, rgba(50,205,50,1) 0%,rgba(50,205,50,1) 85%,rgba(200, 200, 200,1) 100%);
+}
+
+.donation-box {
+  width: 100%;
+  height: 43px;
+  position: relative;
+  background-color: rgba(250, 248, 240,1);
+  border: 2px solid #292225;
+}
+
 #progresstext {
   font-family: 'Helvetica', 'Arial', sans-serif;
   font-weight: 600;
@@ -591,6 +626,10 @@ hr {
 #serverStatus {
   color: #CC1100;
   width: 56px;
+  cursor: pointer;
+}
+#serverUptime {
+  width: 88px;
   cursor: pointer;
 }
 #activeServer {
