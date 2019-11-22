@@ -150,7 +150,7 @@ function getDonationProgress(serverDonationLogin) {
 			if (body.donation-goal != 0) {
 				var goal = body.donation-goal;
 				var received = body.donations-received;
-				donationText.innerHTML = 'Coming Soon™'/*'Donation Statistics: $' + received + ' received of the $' + goal + ' goal (' + Math.trunc(received * 100 / goal) + '%).'*/;
+				donationText.innerHTML = 'Donation Statstics: Coming Soon™'/*'Donation Statistics: $' + received + ' received of the $' + goal + ' goal (' + Math.trunc(received * 100 / goal) + '%).'*/;
 				if ((received * 100 / goal) <= 100) {
 					donationBar.style.width = (received * 100 / goal) + '%';
 				}
