@@ -8,7 +8,7 @@ const install = require('../install');
 const path = require('path');
 
 const sidebarLinks = document.getElementById('sidebarLinks');
-const rulesAgree = document.getElementById('rulesAgree');
+const rulesAgree = document.getElementById('ToSReadOnline');
 
 const folderBox = document.getElementById('folder'); // SWG Awakening Folder Location
 const browseBtn = document.getElementById('browse'); // Set Installation Location Button

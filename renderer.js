@@ -148,9 +148,9 @@ function getDonationProgress(serverDonationLogin) {
         request({url:server[serverDonationLogin][0].statusUrl, json:true}, function(err, response, body) {
             if (err) return console.error(err);
 			if (body.donation-goal != 0) {
-				var goal = body.donation-goal;
-				var received = body.donations-received;
-				donationText.innerHTML = 'Donation Statstics: Coming Soon™'/*'Donation Statistics: $' + received + ' received of the $' + goal + ' goal (' + Math.trunc(received * 100 / goal) + '%).'*/;
+				var goal = body.donation_goal;
+				var received = body.donations_received;
+				donationText.innerHTML = 'Donation Statistics: $' + received + ' received of the $' + goal + ' goal (' + Math.trunc(received * 100 / goal) + '%).';
 				if ((received * 100 / goal) <= 100) {
 					donationBar.style.width = (received * 100 / goal) + '%';
 				}
