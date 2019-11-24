@@ -52,7 +52,7 @@ function createWindow() {
     show: false,
     autoHideMenuBar: true,
     frame: false,
-    icon: path.join(__dirname, 'img/launcher-icon-64.png')
+    icon: path.join(__dirname, 'img/launcher-icon.ico')
   });
   mainWindow.loadURL(url.format({
     pathname: path.join(__dirname, 'index.html'),
@@ -94,7 +94,7 @@ function setupGame() {
       transparent: true,
       frame: false,
       autoHideMenuBar: true,
-      icon: path.join(__dirname, 'img/installer-icon-64.png')
+      icon: path.join(__dirname, 'img/installer-icon.ico')
     });
     setupWindow.loadURL(url.format({
       pathname: path.join(__dirname, 'setup', 'index.html'),

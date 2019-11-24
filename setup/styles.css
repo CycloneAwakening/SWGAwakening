@@ -396,6 +396,7 @@ a:hover, a:active, a:focus {
   padding: 9px 18px;
   border: 1px solid #b80000;
   background-color: #b80000;
+  border-radius: 8px; 
   outline: none;
   -webkit-transition: all 0.1s linear;
   transition: all 0.1s linear;

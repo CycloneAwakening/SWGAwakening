@@ -385,6 +385,7 @@ hr {
   padding: 9px 18px;
   border: 1px solid #292225;
   background-color: #A39598;
+  border-radius: 8px;
   outline: none;
   -webkit-transition: all 0.1s linear;
   transition: all 0.1s linear;
@@ -493,6 +494,7 @@ hr {
   padding: 8px 0;
   border: 1px solid #292225;
   background-color: #A39598;
+  border-radius: 8px; 
   -webkit-transition: all 0.1s linear;
   transition: all 0.1s linear;
 }
@@ -595,12 +597,14 @@ hr {
   -webkit-box-shadow: 1px 0px 4px 1px rgba(0,0,0,0.7);
   -moz-box-shadow: 1px 0px 4px 1px rgba(0,0,0,0.7);
   box-shadow: 1px 0px 4px 1px rgba(0,0,0,0.7);
+  border-radius: 5px;
 }
 
 #progress {
   height: 8px;
   background: -webkit-linear-gradient(left, rgba(137, 108, 92,1) 0%,rgba(137, 108, 92,1) 85%,rgba(200, 200, 200,1) 100%);
   background: linear-gradient(to right, rgba(137, 108, 92,1) 0%,rgba(137, 108, 92,1) 85%,rgba(200, 200, 200,1) 100%);
+  border-radius: 4px;
 }
 .server-stats {
   color: #fff;
@@ -760,7 +764,9 @@ hr {
   font-weight: 600;
   padding: 6px 8px;
   border: 1px solid #292225;
+  border-radius: 8px; 
   background-color: #A39598;
+  border-radius: 4px; 
   -webkit-transition: all 0.1s linear;
   transition: all 0.1s linear;
 }
