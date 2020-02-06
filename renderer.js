@@ -274,6 +274,11 @@ gameConfigBtn.addEventListener('click', event => {
     }
 });
 
+headerLinks.addEventListener('click', function(e) {
+    e.preventDefault();
+    if(e.target.classList.contains("header-link"))
+        shell.openExternal(e.target.href);
+});
 
 headerLinks.addEventListener('auxclick', function(e) {
     e.preventDefault();
@@ -281,6 +286,11 @@ headerLinks.addEventListener('auxclick', function(e) {
         shell.openExternal(e.target.href);
 });
 
+mainButtonLinks.addEventListener('click', function(e) {
+    e.preventDefault();
+    if(e.target.classList.contains("button-link"))
+        shell.openExternal(e.target.href);
+});
 
 mainButtonLinks.addEventListener('auxclick', function(e) {
     e.preventDefault();
