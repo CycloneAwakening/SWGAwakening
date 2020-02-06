@@ -12,6 +12,8 @@ var documentsDir = require('os').homedir() + '/Documents';
 var myGamesDir = documentsDir + '/My Games';
 var swgaDir =  myGamesDir + '/SWG - Awakening';
 
+app.commandLine.appendSwitch("disable-http-cache");
+
 if (!fs.existsSync(documentsDir)) {
   fs.mkdirSync(documentsDir);
 }
