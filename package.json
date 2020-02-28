@@ -1,6 +1,6 @@
 {
   "name": "swg-awakening-launcher",
-  "version": "1.1.3",
+  "version": "1.1.4",
   "description": "SWG Awakening Launcher",
   "main": "main.js",
   "scripts": {
