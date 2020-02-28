@@ -13,15 +13,15 @@ module.exports.getManifest = function(fullScan, emuPath, checkFiles) {
     if (fullScan || emuPath && !fs.existsSync(path.join(emuPath, "swgemu.cfg"))) {
         //force download with size:0, md5:""
         files = files.concat([
-			{name:"live.cfg", size:0, md5:0, url:"http://patcher.swgawakening.com/live.cfg"}, 
-			{name:"login.cfg", size:0, md5:0, url:"http://patcher.swgawakening.com/launcher/login.cfg"}, 
-			{name:"options.cfg", size:0, md5:0, url:"http://patcher.swgawakening.com/launcher/options.cfg"}, 
-			{name:"preload.cfg", size:0, md5:0, url:"http://patcher.swgawakening.com/launcher/preload.cfg"}, 
-			{name:"swgemu.cfg", size:0, md5:0, url:"http://patcher.swgawakening.com/launcher/swgemu.cfg"}, 
-			{name:"user.cfg", size:0, md5:0, url:"http://patcher.swgawakening.com/launcher/user.cfg"}, 
-			{name:"swgemu_machineoptions.iff", size:0, md5:0, url:"http://patcher.swgawakening.com/launcher/swgemu_machineoptions.iff"}, 
-			{name:"KSWGProfCalc.dat", size:0, md5:0, url:"http://patcher.swgawakening.com/launcher/KSWGProfCalc.dat"}, 
-			{name:"KSWGProfCalcEditor.exe", size:0, md5:0, url:"http://patcher.swgawakening.com/launcher/KSWGProfCalcEditor.exe"}, 
+			{name:"live.cfg", size:0, md5:0, url:"http://patcher.swgawakening.com/launcher/live/game_files/live.cfg"}, 
+			{name:"login.cfg", size:0, md5:0, url:"http://patcher.swgawakening.com/launcher/initial_install/login.cfg"}, 
+			{name:"options.cfg", size:0, md5:0, url:"http://patcher.swgawakening.com/launcher/initial_install/options.cfg"}, 
+			{name:"preload.cfg", size:0, md5:0, url:"http://patcher.swgawakening.com/launcher/initial_install/preload.cfg"}, 
+			{name:"swgemu.cfg", size:0, md5:0, url:"http://patcher.swgawakening.com/launcher/initial_install/swgemu.cfg"}, 
+			{name:"user.cfg", size:0, md5:0, url:"http://patcher.swgawakening.com/launcher/initial_install/user.cfg"}, 
+			{name:"swgemu_machineoptions.iff", size:0, md5:0, url:"http://patcher.swgawakening.com/launcher/initial_install/swgemu_machineoptions.iff"}, 
+			{name:"KSWGProfCalc.dat", size:0, md5:0, url:"http://patcher.swgawakening.com/launcher/initial_install/KSWGProfCalc.dat"}, 
+			{name:"KSWGProfCalcEditor.exe", size:0, md5:0, url:"http://patcher.swgawakening.com/launcher/initial_install/KSWGProfCalcEditor.exe"}, 
         ]);
     }
     request({url:server[config.login][0].manifestUrl, json:true}, function(err, response, body) {
