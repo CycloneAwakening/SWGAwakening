@@ -118,6 +118,7 @@ function getServerStatus(serverStatusLogin) {
 				}
 				if(body.status == "Offline")  {
 					serverStatus.style.color = '#CC1100';
+					getServerStatusRetry(serverStatusLogin);
 				}
 				if(body.status == "Loading")  {
 					serverStatus.style.color = 'yellow';
@@ -127,7 +128,7 @@ function getServerStatus(serverStatusLogin) {
 				}
 				if (body.status == "Unknown") {
 					serverStatus.style.color = '#CC1100';
-					getServerStatus(serverStatusLogin);
+					getServerStatusRetry(serverStatusLogin);
 				}
                 serverStatus.innerHTML = body.status;
             }
@@ -139,9 +140,50 @@ function getServerUptime(serverUptimeLogin) {
             if (err) return console.error(err);
 				serverUptime.innerHTML = body.uptime;
 				if (body.uptime == "00:00:00") {
-					getServerUptime(serverUptimeLogin);
+					getServerUptimeRetry(serverUptimeLogin);
 				}
         });
+}
+
+function getServerStatusRetry(serverStatusLogin) {
+		var i;
+		for(i = 10; i > 0; i--){
+			if(body.status == "Unknown" || body.status == "Offline"){
+				request({url:server[serverStatusLogin][0].statusUrl, json:true}, function(err, response, body) {
+					if (err) return console.error(err);
+					if (body.status != undefined) {
+						if(body.status == "Online")  {
+							serverStatus.style.color = 'green';
+						}
+						if(body.status == "Offline")  {
+							serverStatus.style.color = '#CC1100';
+						}
+						if(body.status == "Loading")  {
+							serverStatus.style.color = 'yellow';
+						}
+						if(body.status == "Locked")  {
+							serverStatus.style.color = '#FF7722';
+						}
+						if (body.status == "Unknown") {
+							serverStatus.style.color = '#CC1100';
+						}
+						serverStatus.innerHTML = body.status;
+					}
+				});
+			}
+		}
+}
+
+function getServerUptimeRetry(serverUptimeLogin) {
+		var i;
+		for(i = 10; i > 0; i--){
+			if(body.uptime == "00:00:00"){
+				request({url:server[serverUptimeLogin][0].statusUrl, json:true}, function(err, response, body) {
+					if (err) return console.error(err);
+						serverUptime.innerHTML = body.uptime;
+				});
+			}
+		}
 }
 
 function getDonationProgress(serverDonationLogin) {
@@ -604,6 +646,6 @@ function serverStatLoop () {
 	getServerStatus(config.login);
 	getServerUptime(config.login);
 	getDonationProgress(config.login);
-    setTimeout(serverStatLoop, 20000);
+    setTimeout(serverStatLoop, 60000);
 }
 serverStatLoop();
