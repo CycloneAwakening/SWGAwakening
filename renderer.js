@@ -58,7 +58,6 @@ const serverStatus = document.getElementById('serverStatus');
 const serverUptime = document.getElementById('serverUptime');
 const activeServer = document.getElementById('activeServer');
 const versionDiv = document.getElementById('version');
-versionDiv.innerHTML = package.version;
 
 const configFile = os.homedir() + '/Documents/My Games/SWG - Awakening/SWG-Awakening-Launcher-config.json';
 var config = {folder: 'C:\\SWGAwakening'};
@@ -104,17 +103,16 @@ loginServerSel.value = config.login;
 loginServerSel.setAttribute("data-previous", config.login);
 if (needSave) saveConfig();
 
-getServerStatus(config.login);
-getServerUptime(config.login);
-getDonationProgress(config.login);
+versionDiv.innerHTML = package.version;
 activeServer.innerHTML = server[config.login][0].address;
+getServerStatus(config.login);
 
-function getServerStatus(serverStatusLogin) {
-        request({url:server[serverStatusLogin][0].statusUrl, json:true}, function(err, response, body) {
+function getServerStatus(serverLogin) {
+        request({url:server[serverLogin][0].statusUrl, json:true}, function(err, response, body) {
             if (err) return console.error(err);
             if (body.status != undefined) {
 				serverStatus.innerHTML = body.status;
-				switch (body.status)  {
+				switch (serverStatus.innerHTML)  {
 					case "Online":
 					  serverStatus.style.color = 'green';
 					  break;
@@ -126,31 +124,37 @@ function getServerStatus(serverStatusLogin) {
 					  break;
 					default: //Handles Offline or Unknown
 					  serverStatus.style.color = '#CC1100';
-					  getServerStatusRetry(serverUptimeLogin);
 				}
             }
-        });
-}
-
-function getServerUptime(serverUptimeLogin) {
-        request({url:server[serverUptimeLogin][0].statusUrl, json:true}, function(err, response, body) {
-            if (err) return console.error(err);
+			
+			if (body.uptime != undefined) {
 				serverUptime.innerHTML = body.uptime;
-				if (body.uptime == "00:00:00") {
-					getServerUptimeRetry(serverUptimeLogin);
+			}
+			
+			if (body.donation-goal != 0 || body.donation-goal != undefined) {
+				var goal = body.donation_goal;
+				var received = body.donations_received;
+				donationText.innerHTML = 'Donation Statistics: $' + received + ' received of the $' + goal + ' goal (' + Math.trunc(received * 100 / goal) + '%).';
+				if ((received * 100 / goal) <= 100) {
+					donationBar.style.width = (received * 100 / goal) + '%';
 				}
+			}
+			
+			if(serverStatus.innerHTML == "Unknown" || serverStatus.innerHTML == "Offline"){
+				getServerStatusRetry(serverLogin);
+			}
         });
 }
 
-function getServerStatusRetry(serverStatusLogin) {
+function getServerStatusRetry(serverLogin) {
 		var i;
 		for(i = 10; i > 0; i--){
-			if(body.status == "Unknown" || body.status == "Offline"){
-				request({url:server[serverStatusLogin][0].statusUrl, json:true}, function(err, response, body) {
+			if(serverStatus.innerHTML == "Unknown" || serverStatus.innerHTML == "Offline"){
+				request({url:server[serverLogin][0].statusUrl, json:true}, function(err, response, body) {
 					if (err) return console.error(err);
 					if (body.status != undefined) {
 						serverStatus.innerHTML = body.status;
-						switch (body.status)  {
+						switch (serverStatus.innerHTML)  {
 							case "Online":
 							  serverStatus.style.color = 'green';
 							  break;
@@ -164,35 +168,22 @@ function getServerStatusRetry(serverStatusLogin) {
 							  serverStatus.style.color = '#CC1100';
 						}
 					}
-				});
-			}
-		}
-}
-
-function getServerUptimeRetry(serverUptimeLogin) {
-		var i;
-		for(i = 10; i > 0; i--){
-			if(body.uptime == "00:00:00"){
-				request({url:server[serverUptimeLogin][0].statusUrl, json:true}, function(err, response, body) {
-					if (err) return console.error(err);
+					
+					if (body.uptime != undefined) {
 						serverUptime.innerHTML = body.uptime;
+					}
+					
+					if (body.donation_goal != 0 || body.donation_goal != undefined) {
+						var goal = body.donation_goal;
+						var received = body.donations_received;
+						donationText.innerHTML = 'Donation Statistics: $' + received + ' received of the $' + goal + ' goal (' + Math.trunc(received * 100 / goal) + '%).';
+						if ((received * 100 / goal) <= 100) {
+							donationBar.style.width = (received * 100 / goal) + '%';
+						}
+					}
 				});
 			}
 		}
-}
-
-function getDonationProgress(serverDonationLogin) {
-        request({url:server[serverDonationLogin][0].statusUrl, json:true}, function(err, response, body) {
-            if (err) return console.error(err);
-			if (body.donation-goal != 0) {
-				var goal = body.donation_goal;
-				var received = body.donations_received;
-				donationText.innerHTML = 'Donation Statistics: $' + received + ' received of the $' + goal + ' goal (' + Math.trunc(received * 100 / goal) + '%).';
-				if ((received * 100 / goal) <= 100) {
-					donationBar.style.width = (received * 100 / goal) + '%';
-				}
-			}
-        });
 }
 
 minBtn.addEventListener('click', event => remote.getCurrentWindow().minimize());
@@ -448,8 +439,6 @@ loginServerConfirm.addEventListener('click', function (event) {
 	serverUptime.className = "no-opacity";
     setTimeout(function(){serverUptime.className = "fade-in";},1000);
     getServerStatus(config.login);
-	getServerUptime(config.login);
-	getDonationProgress(config.login);
     disableAll(true);
     resetProgress();
     install.install(config.folder, config.folder, false);
@@ -635,12 +624,10 @@ function saveConfig() {
 
 //versionDiv.addEventListener('click', event => remote.getCurrentWebContents().openDevTools()); //Launcher debugging tool button on the launcher version section
 serverStatus.addEventListener('click', event => getServerStatus(config.login));
-serverUptime.addEventListener('click', event => getServerUptime(config.login));
+serverUptime.addEventListener('click', event => getServerStatus(config.login));
 
 function serverStatLoop () {
 	getServerStatus(config.login);
-	getServerUptime(config.login);
-	getDonationProgress(config.login);
     setTimeout(serverStatLoop, 60000);
 }
 serverStatLoop();
