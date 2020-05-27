@@ -113,24 +113,21 @@ function getServerStatus(serverStatusLogin) {
         request({url:server[serverStatusLogin][0].statusUrl, json:true}, function(err, response, body) {
             if (err) return console.error(err);
             if (body.status != undefined) {
-				if(body.status == "Online")  {
-					serverStatus.style.color = 'green';
+				serverStatus.innerHTML = body.status;
+				switch (body.status)  {
+					case "Online":
+					  serverStatus.style.color = 'green';
+					  break;
+					case "Loading":
+					  serverStatus.style.color = 'yellow';
+					  break;
+					case "Locked":
+					  serverStatus.style.color = '#FF7722';
+					  break;
+					default: //Handles Offline or Unknown
+					  serverStatus.style.color = '#CC1100';
+					  getServerStatusRetry(serverUptimeLogin);
 				}
-				if(body.status == "Offline")  {
-					serverStatus.style.color = '#CC1100';
-					getServerStatusRetry(serverStatusLogin);
-				}
-				if(body.status == "Loading")  {
-					serverStatus.style.color = 'yellow';
-				}
-				if(body.status == "Locked")  {
-					serverStatus.style.color = '#FF7722';
-				}
-				if (body.status == "Unknown") {
-					serverStatus.style.color = '#CC1100';
-					getServerStatusRetry(serverStatusLogin);
-				}
-                serverStatus.innerHTML = body.status;
             }
         });
 }
@@ -152,22 +149,20 @@ function getServerStatusRetry(serverStatusLogin) {
 				request({url:server[serverStatusLogin][0].statusUrl, json:true}, function(err, response, body) {
 					if (err) return console.error(err);
 					if (body.status != undefined) {
-						if(body.status == "Online")  {
-							serverStatus.style.color = 'green';
-						}
-						if(body.status == "Offline")  {
-							serverStatus.style.color = '#CC1100';
-						}
-						if(body.status == "Loading")  {
-							serverStatus.style.color = 'yellow';
-						}
-						if(body.status == "Locked")  {
-							serverStatus.style.color = '#FF7722';
-						}
-						if (body.status == "Unknown") {
-							serverStatus.style.color = '#CC1100';
-						}
 						serverStatus.innerHTML = body.status;
+						switch (body.status)  {
+							case "Online":
+							  serverStatus.style.color = 'green';
+							  break;
+							case "Loading":
+							  serverStatus.style.color = 'yellow';
+							  break;
+							case "Locked":
+							  serverStatus.style.color = '#FF7722';
+							  break;
+							default: //Handles Offline or Unknown
+							  serverStatus.style.color = '#CC1100';
+						}
 					}
 				});
 			}
@@ -638,7 +633,7 @@ function saveConfig() {
     fs.writeFileSync(configFile, JSON.stringify(config));
 }
 
-//versionDiv.addEventListener('click', event => remote.getCurrentWebContents().openDevTools());
+//versionDiv.addEventListener('click', event => remote.getCurrentWebContents().openDevTools()); //Launcher debugging tool button on the launcher version section
 serverStatus.addEventListener('click', event => getServerStatus(config.login));
 serverUptime.addEventListener('click', event => getServerUptime(config.login));
 
