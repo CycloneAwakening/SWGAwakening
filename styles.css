@@ -348,11 +348,11 @@ hr {
   background-position: bottom center;
   background-repeat: no-repeat;
 }
-.button-link:hover, .button-link:focus {
+.button-link:hover {
   opacity: 0.85;
 }
 .button-link:active {
-  opacity: 1;
+  opacity: 0.5;
 }
 .button-link.button-resources {
   background-image: url("./img/buttons/btn-link-gh.png");
