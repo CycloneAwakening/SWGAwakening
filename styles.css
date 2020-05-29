@@ -633,14 +633,16 @@ hr {
 #serverStatus {
   color: #CC1100;
   width: 56px;
-  /*cursor: pointer;*/
 }
 #serverUptime {
   width: 88px;
-  /*cursor: pointer;*/
 }
 #activeServer {
   width: 150px;
+}
+#version {
+  width: 125px;
+  white-space: nowrap;
 }
 #progresstext, .server-stats {
   cursor: default;
