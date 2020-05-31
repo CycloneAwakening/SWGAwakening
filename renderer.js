@@ -108,7 +108,7 @@ activeServer.innerHTML = server[config.login][0].address;
 getServerStatus(config.login);
 
 function getServerStatus(serverLogin) {
-        request({url:server[serverLogin][0].statusUrl, json:true}, function(err, response, body) {
+        request({url:server[serverLogin][0].statusUrl, json:true, rejectUnauthorized:false}, function(err, response, body) {
             if (err) return console.error(err);
             if (body.status != undefined) {
 				serverStatus.innerHTML = body.status;
@@ -622,7 +622,7 @@ function saveConfig() {
     fs.writeFileSync(configFile, JSON.stringify(config));
 }
 
-//versionDiv.addEventListener('click', event => remote.getCurrentWebContents().openDevTools()); //Launcher debugging tool button on the launcher version section
+versionDiv.addEventListener('click', event => remote.getCurrentWebContents().openDevTools()); //Launcher debugging tool button on the launcher version section
 serverStatus.addEventListener('click', event => getServerStatus(config.login));
 serverUptime.addEventListener('click', event => getServerStatus(config.login));
 
