@@ -120,8 +120,8 @@ if (process.send) {
             if (stats.size != fileInfo.size && fileInfo.size != 0) {process.send("size mismatch actual: " + stats.size + ' expected: ' + fileInfo.size); return doDownload();}
             if (process.env.fullScan)
                 md5(src, hash => {
-                    if (hash != fileInfo.md5 && fileInfo.md5 != 0) {
-                        process.send('md5 mismatch actual: ' + hash + ' expected: ' + fileInfo.md5);
+                    if (hash != String(fileInfo.md5).toLowerCase() && fileInfo.md5 != 0) {
+                        process.send('md5 mismatch actual: ' + hash + ' expected: ' + String(fileInfo.md5).toLowerCase());
                         progress(-fileInfo.size);
                         return doDownload();
                     }
