@@ -147,8 +147,7 @@ function getServerStatus(serverLogin) {
 }
 
 function getServerStatusRetry(serverLogin) {
-		var i;
-		for(i = 10; i > 0; i--){
+		for(var i = 10; i > 0; i--){
 			if(serverStatus.innerHTML == "Unknown" || serverStatus.innerHTML == "Offline"){
 				request({url:server[serverLogin][0].statusUrl, json:true}, function(err, response, body) {
 					if (err) return console.error(err);
