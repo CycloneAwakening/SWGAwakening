@@ -63,6 +63,12 @@ const configFile = os.homedir() + '/Documents/My Games/SWG - Awakening/SWG-Awake
 var config = {folder: 'C:\\SWGAwakening'};
 
 const launchSound = document.getElementById('launcherSound');
+const buttonClickSound = document.getElementById('buttonClickSound');
+const buttonHoverSound = document.getElementById('buttonHoverSound');
+const openSound = "./sound/awakening.mp3";
+const butClickSound = "./sound/int_select.wav";
+const butHoverSound = "./sound/ui_rollover.wav";
+const wrapper = document.getElementById('launcher-wrapper'); //Used to apply events to every tag in launcher-wrap div
 const enableSounds = document.getElementById('enableSounds');
 
 if (fs.existsSync(configFile))
@@ -70,16 +76,60 @@ if (fs.existsSync(configFile))
 gameDirBox.value = config.folder;
 var needSave = false;
 
-if ((config.soundsrc != " ") && (config.soundsrc != "./sound/awakening.mp3")) {
-    config.soundsrc = "./sound/awakening.mp3";
+/*
+ * Launcher Sound Functionality
+ */
+if (config.soundsrc != " " && config.soundsrc != openSound) {
+    config.soundsrc = openSound;
     needSave = true;
 }
 launchSound.src = config.soundsrc;
-if (config.soundsrc == "./sound/awakening.mp3")  {
+
+if ((config.buttonclicksrc != " " && config.buttonclicksrc != butClickSound)) {
+    config.buttonclicksrc = butClickSound;
+    needSave = true;
+}
+buttonClickSound.src = config.buttonclicksrc;
+
+if ((config.buttonhoversrc != " " && config.buttonhoversrc != butHoverSound)) {
+    config.buttonhoversrc = butHoverSound;
+    needSave = true;
+}
+buttonHoverSound.src = config.buttonhoversrc;
+
+if (config.soundsrc == openSound)  {
 	enableSounds.checked = true;
 } else {
 	enableSounds.checked = false;
 }
+
+function buttonPlaySound(audioType) {
+	audioType.cloneNode(true).play();
+}
+
+wrapper.addEventListener('click', (event) => {
+	const isButton = event.target.nodeName === 'BUTTON';
+	const isA = event.target.nodeName === 'A';
+	if (!isButton && !isA) {
+		return;
+	}
+
+	buttonPlaySound(buttonClickSound);
+})
+	
+wrapper.addEventListener('mouseover', (event) => {
+	const isButton = event.target.nodeName === 'BUTTON';
+	const isA = event.target.nodeName === 'A';
+	if (!isButton && !isA) {
+		return;
+	}
+
+	buttonPlaySound(buttonHoverSound);
+})
+
+//End of launcher sound function (exception enable sounds button)
+
+
 if (!config.fps) {
     config.fps = 60;
     needSave = true;
@@ -356,12 +406,21 @@ newsUpdatesRefresh.addEventListener('click', function(e) {
  
 enableSounds.addEventListener('click', function (event) {
     if (enableSounds.checked) {
-		config.soundsrc = "./sound/awakening.mp3";
+		config.soundsrc = openSound;
+		config.buttonclicksrc = butClickSound;
+		config.buttonhoversrc = butHoverSound;
+		launchSound.src = config.soundsrc;
+		buttonClickSound.src = config.buttonclicksrc
+		buttonHoverSound.src = config.buttonhoversrc
 		saveConfig();
     } else {
 		config.soundsrc = " ";
+		config.buttonclicksrc = " ";
+		config.buttonhoversrc = " ";
 		saveConfig();
 		launchSound.src = config.soundsrc;
+		buttonClickSound.src = config.buttonclicksrc
+		buttonHoverSound.src = config.buttonhoversrc
     }
 });
 
