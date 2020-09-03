@@ -43,7 +43,7 @@
   "build": {
     "productName": "SWG Awakening Launcher",
     "win": {
-	  "requestedExecutionLevel": "highestAvailable",
+      "requestedExecutionLevel": "highestAvailable",
       "target": [
         "nsis",
         "zip"
@@ -51,7 +51,7 @@
     },
     "nsis": {
       "perMachine": true,
-	  "oneClick": false,
+      "oneClick": false,
       "allowToChangeInstallationDirectory": true
     }
   }
