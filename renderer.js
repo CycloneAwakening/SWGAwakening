@@ -409,7 +409,6 @@ enableSounds.addEventListener('click', function (event) {
 		config.soundsrc = openSound;
 		config.buttonclicksrc = butClickSound;
 		config.buttonhoversrc = butHoverSound;
-		launchSound.src = config.soundsrc;
 		buttonClickSound.src = config.buttonclicksrc
 		buttonHoverSound.src = config.buttonhoversrc
 		saveConfig();
