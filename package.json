@@ -1,11 +1,12 @@
 {
   "name": "swg-awakening-launcher",
-  "version": "1.1.8",
+  "version": "1.1.9",
   "description": "SWG Awakening Launcher",
   "main": "main.js",
   "scripts": {
     "start": "electron .",
-    "build-win": "build --win --ia32 -p always",
+    "build-win": "build --win --ia32 -p never",
+    "deploy-win": "build --win --ia32 -p always",
     "build-linux": "build --linux --x64",
     "build-mac": "build --mac --x64"
   },
@@ -27,18 +28,18 @@
   "author": "SWG Awakening",
   "license": "CC0-1.0",
   "devDependencies": {
-    "electron": "^2.0.13",
-    "electron-builder": "^20.31.2"
+    "electron": "^10.1.2",
+    "electron-builder": "^20.44.4"
   },
   "dependencies": {
-    "adm-zip": "^0.4.11",
+    "adm-zip": "^0.4.16",
     "electron-is-dev": "^0.2.0",
     "electron-log": "^2.2.17",
-    "electron-updater": "^3.0.3",
-    "follow-redirects": "^1.5.9",
-    "mkdirp": "^0.5.1",
+    "electron-updater": "^4.3.5",
+    "follow-redirects": "^1.13.0",
+    "mkdirp": "^0.5.5",
     "random-access-file": "^1.8.1",
-    "request": "^2.88.0"
+    "request": "^2.88.2"
   },
   "build": {
     "productName": "SWG Awakening Launcher",
