@@ -69,16 +69,16 @@ a:hover, a:active, a:focus {
 }
 
 .setup-wrap {
-  width: 810px;
-  height: 610px;
+  width: 775px;
+  height: 600px;
   position: relative;
 }
 .setup-bg {
   position: absolute;
   left:0px;
   top:0px;
-  width: 810px;
-  height: 610px;
+  width: 775px;
+  height: 600px;
   z-index: -1;
   background-image: url("./img/swga-setup-background.png");
   background-size: auto;
@@ -166,7 +166,7 @@ a:hover, a:active, a:focus {
 
 .swga-logo {
   padding: 10px 16.5px 12px;
-  margin-left: 10px;
+  margin-left: 0px;
 }
 .sidebar-inner {
   height: 100%;
@@ -183,24 +183,25 @@ a:hover, a:active, a:focus {
   font-size: 14px;
   line-height: 14px;
   padding: 3px 0;
-  margin-left: 10px;
+  margin-left: 0px;
   /*color: #0d0d0d;*/
 }
 
 #sidebarLinks {
   position: absolute;
-  bottom: 74px;
+  bottom: 150px;
 }
 .sidebar-link {
   display: block;
   font-family: 'Helvetica', 'Arial', sans-serif;
+  font-weight: bold;
   font-size: 14px;
   color: rgba(38, 38, 38,0.85);
   padding: 8px 0;
   text-decoration: none;
   -webkit-transition: all 0.1s linear;
   transition: all 0.1s linear;
-  margin-left: 10px;
+  margin-left: 0px;
 }
 .sidebar-link:hover {
   color: rgba(38, 38, 38,0.65);
