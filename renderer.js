@@ -1,15 +1,15 @@
 const ipc = require('electron').ipcRenderer;
 const shell = require('electron').shell;
 const remote = require('electron').remote;
-const fs = require('fs');
+const fs = require('electron').remote.require('fs');
 const request = require('request');
-const process = require('child_process');
+const process = require('electron').remote.require('child_process');
 const server = require('./json/server');
 const cleanup = require('./json/cleanup');
 const package = require('./package');
 const install = require('./install');
-const path = require('path');
-const os = require('os');
+const path = require('electron').remote.require('path');
+const os = require('electron').remote.require('os');
 
 const playBtn = document.getElementById('play');
 
@@ -679,7 +679,7 @@ function saveConfig() {
     fs.writeFileSync(configFile, JSON.stringify(config));
 }
 
-versionDiv.addEventListener('click', event => remote.getCurrentWebContents().openDevTools()); //Launcher debugging tool button on the launcher version section
+versionDiv.addEventListener('click', event => remote.getCurrentWindow().toggleDevTools()); //Launcher debugging tool button on the launcher version section
 serverStatus.addEventListener('click', event => getServerStatus(config.login));
 serverUptime.addEventListener('click', event => getServerStatus(config.login));
 
