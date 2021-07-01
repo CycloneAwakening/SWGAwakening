@@ -1,281 +1,368 @@
 <!DOCTYPE html>
 <html>
-  <head>
+
+<head>
     <meta charset="UTF-8">
     <title>SWG Awakening Launcher</title>
     <link rel="stylesheet" href="./styles.css" type="text/css" />
     <style>
     </style>
-  </head>
-  <body>
-	<audio id="launcherSound" src="" type="audio/mpeg" autoplay></audio>
-	<audio id="buttonClickSound" src="" type="audio/mpeg"></audio>
-	<audio id="buttonHoverSound" src="" type="audio/mpeg"></audio>	
-    <div class="launcher-wrap" id="launcher-wrapper">
-      <div class="launcher-bg"></div>
-      <div class="main-section">
-        <div class="header-section">
-          <img class="swga-logo draggable" src="./img/img-swga-logo.png" />
-          <div id="headerLinks">
-            <a href="https://swgawakening.com/portal" class="header-link news-updates-title text-link">Website</a>
-            <a href="https://swgawakening.com/index.php" class="header-link text-link">Forums</a>
-			<a href="https://swgawakening.com/viewforum.php?f=85" class="header-link text-link">Patch Notes</a>
-            <a href="https://discord.gg/QxQSXwY" class="header-link btn-links btn-discord" tooltip="Join the SWG Awakening Discord server." tooltip-position="top"></a>
-            <a href="https://www.facebook.com/swgawakening/" class="header-link btn-links btn-facebook" tooltip="Visit the SWG Awakening Facebook page." tooltip-position="top"></a>
-          </div>
-          <div class="window-management">
-			<!--For future expansion of launcher settings, the id will need modifying for CSS and implementing in JS-->
-		    <!--<button id="help" tooltip="Launcher Settings" tooltip-position="left">&#x2699</button>-->
-            <button id="help" tooltip="Please close all prompts to access the help menu." tooltip-position="left">?</button>
-            <button id="minimize" class="window-button"></button>
-            <button id="close" class="window-button"></button>
-          </div>
-        </div>
-        <div class="content-section">
-          <div class="left-section">
-            <div class="news-updates-wrapper">
-              <button id="newsUpdatesRefresh" class="news-updates-refresh"></button>
-              <webview id="newsUpdatesView" class="news-updates-view" src="https://swgawakening.com/launcher-home.php"></webview>
-			  <div class="donation-box">
-				<div id="donationtext">Trying to Retrieve Donation Information...</div>
-			    <div class="donation-bar">
-			   	  <div id="donation"></div>
-				</div>
-			  </div>
-            </div>
-			
-		  </div>
-          <div class="right-section">
-            <div class="config-section-container">
-              <div id="configSection" style="display:none">
-                <div id="configPromptOverlay" class="config-prompt-overlay" style="display:none">
-                  <div class="config-prompt-inner">
-                    <div id="configPromptClose" class="closeConfigPrompt config-prompt-close" data-prompt-attr="" data-prompt-value=""></div>
-                    <div id="gameDirPrompt" class="config-prompt">
-                      <div class="config-section-header">Installation Directory</div>
-                      <div class="config-options">
-                        <div class="config-label">Error: Star Wars Galaxies Not Detected</div>
-                        <div class="config-row">
-                          <div class="config-col left-col">
-                            <p>A valid copy of Star Wars Galaxies could not be detected at the following directory:</p>
-                            <input id="gameDirPromptBox" type="text" class="input game-directory-input" disabled/>
-                          </div>
-                          <div class="config-col right-col">
-                            <p>Please <strong>click "Back"</strong> and run "Setup" on the selected directory or choose a directory with Star War Galaxies installed.</p>
-                            <p><strong>No changes were made.</strong></p>
-                          </div>
-                        </div>
-                        <div class="config-col-full center">
-                          <button class="closeConfigPrompt swga-button-sm uppercase">Back</button>
-                        </div>
-                      </div>
-                    </div>
-                    <div id="loginServerPrompt" class="config-prompt">
-                      <div class="config-section-header">Login Server</div>
-                      <div class="config-options">
-                        <div class="config-label">Warning!</div>
-                        <div class="config-row">
-                          <div class="config-col left-col">
-                            <p>Changing your login server will modify your Star Wars Galaxies installation.</p>
-                            <p>This could mean redownloading a large number of files.</p>
-                            <button id="loginServerConfirm" class="swga-button-sm uppercase">Change Server</button>
-                            <button class="closeConfigPrompt swga-button-sm uppercase">Back</button>
-                          </div>
-                          <div class="config-col right-col">
-                            <p>It is recommend to have a back up of your game files just in case.</p>
-                            <p>Click <strong>Change Server</strong> to change your login server and continue, or "Back" to return to the previous menu.</p>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                    <div id="helpInfoPrompt" class="config-prompt">
-                      <div class="config-section-header">Help and Information</div>
-                      <div class="config-options">
-                        <div id="helpLinks" class="config-row">
-                          <div class="config-col left-col">
-                            <div class="config-label">FAQ</div>
-                            <a class="swga-button-sm" href="https://swgawakening.com/faq">FAQ Home</a>
-							<a class="swga-button-sm" href="https://swgawakening.com/launcher-troubleshooting">Launcher Troubleshooting</a>
-                            <br><br>
-                            <div class="config-label">Support</div>
-                            <a class="swga-button-sm" href="https://swgawakening.com/viewforum.php?f=97">Question Forums</a>
-                            <a class="swga-button-sm" href="https://swgawakening.com/support">Ticket System</a>
-							</div>
-                          <div class="config-col right-col">
-                            <p>Adapted by <strong>Cyclone</strong> of <strong>SWG Awakening</strong> <a href="https://github.com/CycloneAwakening/SWGAwakening">Public Repository</a> - <a href="https://github.com/CycloneAwakening/SWGAwakening/blob/master/LICENSE.md">CC0 1.0 Public Domain</a></p>
-                            <p>Based on <a href="https://github.com/dpwhittaker/RoC-Launcher">RoC Launcher </a>by <strong>dpwhittaker</strong> and the <a href="https://github.com/DesporoWace/SR-Launcher">SREmu Launcher </a> by <strong>Tyclo</strong></p>
-							<hr>
-                            <p>Thanks for playing on <a href="https://www.swgawakening.com/portal/">SWG Awakening</a></p>
-							<p>Launcher background by <a href="https://fantasio.work/">Fantasio</a></p>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                    <div id="setupCompletePrompt" class="config-prompt">
-                      <div class="config-section-header">Welcome to SWG Awakening</div>
-                      <div class="config-options config-scroll">
-                        <div class="config-row">
-                          <div class="config-col left-col">
-                            <div class="config-label">Setup Complete</div>
-                            <p>While your game downloads, here are some tips and tricks to help you get started on SWG Awakening</p>
-                            <div class="config-label-sm">Account Creation</div>
-                            <p class="sm">Don't forget to create a <a href="https://swgawakening.com/ucp.php?mode=register">forum and game account</a>. Then use those details to login to the game.</p>
-                            <hr>
-                            <div class="config-label-sm">Community</div>
-                            <p class="sm"><strong>General Chat:</strong> You can chat with other players in-game no matter where you are. On your chat box, select the "General" tab.</p>
-                            <p class="sm"><strong>Auction Chat:</strong> Check the "Auction" channel in game to see where players are buffing and selling their goods. Right click a chat tab and add or modify a chat tab to include the "Auction" channel.</p>
-                          </div>
-                          <div class="config-col right-col">
-                            <div class="config-label">SWG Options - <a href="https://www.swgemu.com/forums/content.php?r=233-Troubleshooting-SWGEmu">Read online</a></div>
-                            <p class="sm">Use the "SWG Options" button in the launcher to configure your game.</p>
-                            <p><strong>Graphics:</strong> <span class="sm">Set your Game Resolution to match your monitor's resolution, then set Vertex/Pixel Shader to "2.0 (override)"" and check "Use Safe Renderer". It is also recommended to run the game in both "Windowed Mode" and "Borderless Window" mode.</span></p>
-                            <p><strong>Sound:</strong> <span class="sm">Make sure "Disable Audio" is <strong>NOT</strong> selected.</span></p>
-                            <p><strong>Game:</strong> <span class="sm">Check "Skip Intro Sequence" and if your computer performs well, "Disabled Character System LoD Manager."</span></p>
-                            <p><strong>Advanced:</strong> <span class="sm">Check "Disable World Preloading" and "Disabled File Caching."</span></p>
-                          </div>
-                        </div>
-                        <div class="config-col-full">
-                          <hr>
-                          <div class="config-label-sm">Game Play Suggestions</div>
-                            <p class="sm">When you start on SWG Awakening, after first creating your character, join up to general chat and have a chat with the other players. <strong>Don't forget to migrate your stats before leaving the station!</strong></p>
-                            <p class="sm">There is a 30 minute timer on creating and deleting characters. If you create or delete a character, you will not be able to create a new one for 30 minutes.</p>
-                            <p class="sm">Buff Droids are located in Coronet and Mos Eisley outside the starport (as well as other locations), use these for free starter buffs with short duration. It is highly recommend you check the auction channel or ask in general chat to see who is buffing.</p>
-                            <p class="sm">When first starting your leveling journey, a good way to earn XP is to kill the low difficulty spawns around the NPC cities.</p>
-							<p class="sm">To read more useful information about getting started on SWG Awakening take a look at this <a href="https://swgawakening.com/viewtopic.php?f=42&t=10876" class="sm">player written guide</a>.</p>
-                        </div>
-                      </div>
-                    </div>
-                    <div class="config-prompt-arrow"></div>
-                  </div>
-                </div>
-                <div class="config-section-header">Game &amp Launcher Settings</div>
-                <div class="config-options">
-                  <div class="config-col left-col">
-                    <div class="swga-folder">
-                      <div class="config-label">Game Files
-                      </div>
-                      <div>
-                        <button class="tooltip float-right" tooltip="Change the installation directory of SWG Awakening." tooltip-position="top">?</button>
-                        <div class="config-label-sm">Installation Directory</div>
-                      </div>
-                      <div class="row">
-                        <div class="column col-4">
-                          <input id="gameDir" type="text" class="input game-directory-input" disabled/>
-                        </div>
-                        <div class="column col-2 browse-column">
-                          <button id="changeDirBtn" class="swga-button-sm full-width uppercase">Change</button>
-                        </div>
-                      </div>
-                    </div>
-                    <hr>
-                    <div>
-                      <div class="row">
-                        <div class="column col-2">
-                          <button class="tooltip float-right" tooltip="Verify the integrity of your game files. This could take a while." tooltip-position="top">?</button>
-                          <div class="config-label-sm">Full Scan</div>
-                          <button id="verifyBtn" class="swga-button-sm full-width">Verify Files</button>
-                        </div>
-                        <div class="column col-2"></div>
-                        <div class="column col-2">
-                          <button class="tooltip float-right" tooltip="Rerun the setup process for SWG Awakening. No personal data will be lost." tooltip-position="top">?</button>
-                          <div class="config-label-sm">Game Setup</div>
-                          <button id="configSetupBtn" class="swga-button-sm full-width">Run Setup</button>
-                        </div>
-                      </div>
-                    </div>
-					<div class="swga-checkbox">
-						<input type="checkbox" id="enableSounds" name="enableSounds" value="agreed">
-						<label for="enableSounds">Enable Launcher Sounds</label>
-					</div>
-                  </div>
-                  <div class="config-col right-col">
-                    <div class="swga-swg-config">
-                      <p class="config-label">SWG Config</p>
-                      <div class="row">
-                        <div class="column col-2">
-                          <div class="config-label-sm">Memory</div>
-                          <select id="ram" class="full-width">
-                            <option value="2048">2 GB</option>
-                            <option value="1536">1.5 GB</option>
-                            <option value="1024">1 GB</option>
-                            <option value="750">750 MB</option>
-                          </select>
-                        </div>
-                        <div class="column col-2 col-spacer-6">
-                          <div class="config-label-sm">FPS</div>
-                          <select id="fps" class="full-width">
-							<option value="120">120 (Manually disable VSync in SWG OPTIONS)</option>
-                            <option value="60">60</option>
-                            <option value="30">30</option>
-                          </select>
-                        </div>
-                        <div class="column col-2 col-spacer-6">
-                          <div class="config-label-sm">Zoom</div>
-                          <select id="zoom" class="full-width">
-                            <option value="1">1 (default)</option>
-                            <option value="3">3</option>
-                            <option value="5">5 (med)</option>
-                            <option value="7">7</option>
-                            <option value="10">10 (far)</option>
-                          </select>
-                        </div>
-                      </div>
-                      <hr>
-                      <div class="row">
-                        <div class="column col-6">
-                          <button class="tooltip float-right" tooltip="Switching a login server will convert your installation. Please do not change your primary installation to a test version without having a backup." tooltip-position="top">?</button>
-                          <div class="config-label-sm">Login Server</div>
-                          <select id="loginServerSelect" class="full-width" data-previous="">
-                            <option value="live">Live Server</option>
-                            <option value="test">Test Server</option>
-                          </select>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-                <div class="config-section-arrow"></div>
-              </div>
-            </div>
-            <div class="right-section-container">
-              <div class="options-buttons">
-                <button id="swgOptionsBtn" class="option-button swga-button swga-btn-icon swga-btn-icon-left">SWG Options</button>
-                <button id="gameConfigBtn" class="option-button swga-button swga-btn-icon swga-btn-icon-left">Settings</button>
-              </div>
-              <div id="mainButtonLinks">
-                <a href="http://galaxyharvester.net/ghHome.py?" class="button-link button-resources" tooltip="Don't forget to set the galaxy to 'SWG Awakening' to see resources from our server!" tooltip-position="top"></a>
-                <button id="skillPlanner" class="button-link button-skillplanner" tooltip-enabled-hide="Run the setup / wait for the current launcher function to finish to enable the skill planner." tooltip-position="top"></button>
-				<a href="https://topg.org/swg-private-servers/in-400120" class="button-link button-topg"></a>
-                <a href="https://swgawakening.com/donate" class="button-link button-donate"></a>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-      <div class="bottom-section">
-        <div class="progress-container">
-          <div class="progress-stats">
-            <button id="cancelBtn">Cancel</button>
-            <div id="progresstext">100%</div>
-          </div>
-          <div class="progress-bar">
-            <div id="progress"></div>
-          </div>
-          <div class="server-stats">
-            <div class="server-stat-data">Server Status: <span id="serverStatus">Unknown</span></div>
-			<div class="server-stat-data">Server Uptime: <span id="serverUptime">-:-:-:-</span></div>
-            <div class="server-stat-data">Active Server: <span id="activeServer"></span></div>
-            <div class="server-stat-data">Launcher Version: <span id="version"></span></div>
-          </div>
-        </div>
-        <div class="play-button-container">
-          <button id="play" class="button" disabled>Play</button>
-        </div>
-      </div>
-    </div>
-  </body>
+</head>
 
-  <script>
+<body>
+    <audio id="launcherSound" src="" type="audio/mpeg" autoplay></audio>
+    <audio id="buttonClickSound" src="" type="audio/mpeg"></audio>
+    <audio id="buttonHoverSound" src="" type="audio/mpeg"></audio>
+    <div class="launcher-wrap" id="launcher-wrapper">
+        <div class="launcher-bg"></div>
+        <div class="main-section">
+            <div class="header-section">
+                <img class="swga-logo draggable" src="./img/img-swga-logo.png" />
+                <div id="headerLinks">
+                    <a href="https://swgawakening.com/portal"
+                        class="header-link news-updates-title text-link">Website</a>
+                    <a href="https://swgawakening.com/index.php" class="header-link text-link">Forums</a>
+                    <a href="https://swgawakening.com/viewforum.php?f=85" class="header-link text-link">Patch Notes</a>
+                    <a href="https://discord.gg/QxQSXwY" class="header-link btn-links btn-discord"
+                        tooltip="Join the SWG Awakening Discord server." tooltip-position="top"></a>
+                    <a href="https://www.facebook.com/swgawakening/" class="header-link btn-links btn-facebook"
+                        tooltip="Visit the SWG Awakening Facebook page." tooltip-position="top"></a>
+                </div>
+                <div class="window-management">
+                    <!--For future expansion of launcher settings, the id will need modifying for CSS and implementing in JS-->
+                    <!--<button id="help" tooltip="Launcher Settings" tooltip-position="left">&#x2699</button>-->
+                    <button id="help" tooltip="Please close all prompts to access the help menu."
+                        tooltip-position="left">?</button>
+                    <button id="minimize" class="window-button"></button>
+                    <button id="close" class="window-button"></button>
+                </div>
+            </div>
+            <div class="content-section">
+                <div class="left-section">
+                    <div class="news-updates-wrapper">
+                        <button id="newsUpdatesRefresh" class="news-updates-refresh"></button>
+                        <webview id="newsUpdatesView" class="news-updates-view"
+                            src="https://swgawakening.com/launcher-home.php"></webview>
+                    </div>
+                    <div class="donation-stats-wrapper">
+                        <div id="donationtext">Trying to Retrieve Donation Information...</div>
+                        <div class="donation-bar">
+                            <div id="donation"></div>
+                        </div>
+                    </div>
+                </div>
+                <div class="right-section">
+                    <div class="config-section-container">
+                        <div id="configSection" style="display:none">
+                            <div id="configPromptOverlay" class="config-prompt-overlay" style="display:none">
+                                <div class="config-prompt-inner">
+                                    <div id="configPromptClose" class="closeConfigPrompt config-prompt-close"
+                                        data-prompt-attr="" data-prompt-value=""></div>
+                                    <div id="gameDirPrompt" class="config-prompt">
+                                        <div class="config-section-header">Installation Directory</div>
+                                        <div class="config-options">
+                                            <div class="config-label">Error: Star Wars Galaxies Not Detected</div>
+                                            <div class="config-row">
+                                                <div class="config-col left-col">
+                                                    <p>A valid copy of Star Wars Galaxies could not be detected at the
+                                                        following directory:</p>
+                                                    <input id="gameDirPromptBox" type="text"
+                                                        class="input game-directory-input" disabled />
+                                                </div>
+                                                <div class="config-col right-col">
+                                                    <p>Please click <strong>"Cancel"</strong> and "Run Setup" on the
+                                                        selected directory or choose a directory with Star War Galaxies
+                                                        installed.</p>
+                                                    <p><strong>No changes were made.</strong></p>
+                                                </div>
+                                            </div>
+                                            <div class="config-col-full center">
+                                                <button class="closeConfigPrompt swga-button-sm uppercase">Cancel</button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div id="loginServerPrompt" class="config-prompt">
+                                        <div class="config-section-header">Login Server</div>
+                                        <div class="config-options">
+                                            <div class="config-label">Warning!</div>
+                                            <div class="config-row">
+                                                <div class="config-col left-col">
+                                                    <p>Changing your login server will modify your Star Wars Galaxies
+                                                        installation.</p>
+                                                    <p>This could mean redownloading a large number of files.</p>
+                                                    <button id="loginServerConfirm"
+                                                        class="swga-button-sm uppercase">Change Server</button>
+                                                    <button
+                                                        class="closeConfigPrompt swga-button-sm uppercase">Abort Change</button>
+                                                </div>
+                                                <div class="config-col right-col">
+                                                    <p>It is recommend to have a back up of your game files just in
+                                                        case.</p>
+                                                    <p>Click <strong>"Change Server"</strong> to change your login server
+                                                        and continue, or "Abort Change" to cancel the server change.</p>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div id="helpInfoPrompt" class="config-prompt">
+                                        <div class="config-section-header">Help and Information</div>
+                                        <div class="config-options">
+                                            <div id="helpLinks" class="config-row">
+                                                <div class="config-col left-col">
+                                                    <div class="config-label">FAQ</div>
+                                                    <a class="swga-button-sm" href="https://swgawakening.com/faq">FAQ
+                                                        Home</a>
+                                                    <a class="swga-button-sm"
+                                                        href="https://swgawakening.com/launcher-troubleshooting">Launcher
+                                                        Troubleshooting</a>
+                                                    <br><br>
+                                                    <div class="config-label">Support</div>
+                                                    <a class="swga-button-sm"
+                                                        href="https://swgawakening.com/support">Ticket System</a>
+                                                    <a class="swga-button-sm"
+                                                        href="https://swgawakening.com/viewforum.php?f=97">Question
+                                                        Forum</a>
+                                                </div>
+                                                <div class="config-col right-col">
+                                                    <p>Adapted by <strong>Cyclone</strong> of <strong>SWG
+                                                            Awakening</strong> <a
+                                                            href="https://github.com/CycloneAwakening/SWGAwakening">Public
+                                                            Repository</a> - <a
+                                                            href="https://github.com/CycloneAwakening/SWGAwakening/blob/master/LICENSE.md">CC0
+                                                            1.0 Public Domain</a></p>
+                                                    <p>Based on <a
+                                                            href="https://github.com/dpwhittaker/RoC-Launcher">RoC
+                                                            Launcher </a>by <strong>dpwhittaker</strong> and the <a
+                                                            href="https://github.com/DesporoWace/SR-Launcher">SREmu
+                                                            Launcher </a> by <strong>Tyclo</strong></p>
+                                                    <hr>
+                                                    <p>Thanks for playing on <a
+                                                            href="https://www.swgawakening.com/portal/">SWG
+                                                            Awakening</a></p>
+                                                    <p>Launcher background by <a
+                                                            href="https://fantasio.work/">Fantasio</a></p>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div id="setupCompletePrompt" class="config-prompt">
+                                        <div class="config-section-header">Welcome to SWG Awakening</div>
+                                        <div class="config-options config-scroll">
+                                            <div class="config-row">
+                                                <div class="config-col left-col">
+                                                    <div class="config-label">Setup Complete</div>
+                                                    <p>While your game downloads, here are some tips and tricks to help
+                                                        you get started on SWG Awakening</p>
+                                                    <div class="config-label-sm">Account Creation</div>
+                                                    <p class="sm">Don't forget to create a <a
+                                                            href="https://swgawakening.com/ucp.php?mode=register">forum
+                                                            and game account</a>. Then use those details to login to the
+                                                        game.</p>
+                                                    <hr>
+                                                    <div class="config-label-sm">Community</div>
+                                                    <p class="sm"><strong>General Chat:</strong> You can chat with other
+                                                        players in-game no matter where you are. On your chat box,
+                                                        select the "General" tab.</p>
+                                                    <p class="sm"><strong>Auction Chat:</strong> Check the "Auction"
+                                                        channel in game to see where players are buffing and selling
+                                                        their goods. Right click a chat tab and add or modify a chat tab
+                                                        to include the "Auction" channel.</p>
+                                                </div>
+                                                <div class="config-col right-col">
+                                                    <div class="config-label">SWG Options - <a
+                                                            href="https://www.swgemu.com/forums/content.php?r=233-Troubleshooting-SWGEmu">Read
+                                                            online</a></div>
+                                                    <p class="sm">Use the "SWG Options" button in the launcher to
+                                                        configure your game.</p>
+                                                    <p><strong>Graphics:</strong> <span class="sm">Set your Game
+                                                            Resolution to match your monitor's resolution, then set
+                                                            Vertex/Pixel Shader to "2.0 (override)"" and check "Use Safe
+                                                            Renderer". It is also recommended to run the game in both
+                                                            "Windowed Mode" and "Borderless Window" mode.</span></p>
+                                                    <p><strong>Sound:</strong> <span class="sm">Make sure "Disable
+                                                            Audio" is <strong>NOT</strong> selected.</span></p>
+                                                    <p><strong>Game:</strong> <span class="sm">Check "Skip Intro
+                                                            Sequence" and if your computer performs well, "Disabled
+                                                            Character System LoD Manager."</span></p>
+                                                    <p><strong>Advanced:</strong> <span class="sm">Check "Disable World
+                                                            Preloading" and "Disabled File Caching."</span></p>
+                                                </div>
+                                            </div>
+                                            <div class="config-col-full">
+                                                <hr>
+                                                <div class="config-label-sm">Game Play Suggestions</div>
+                                                <p class="sm">When you start on SWG Awakening, after first creating your
+                                                    character, join up to general chat and have a chat with the other
+                                                    players. <strong>Don't forget to migrate your stats before leaving
+                                                        the station!</strong></p>
+                                                <p class="sm">There is a 30 minute timer on creating and deleting
+                                                    characters. If you create or delete a character, you will not be
+                                                    able to create a new one for 30 minutes.</p>
+                                                <p class="sm">Buff Droids are located in Coronet and Mos Eisley outside
+                                                    the starport (as well as other locations), use these for free
+                                                    starter buffs with short duration. It is highly recommend you check
+                                                    the auction channel or ask in general chat to see who is buffing.
+                                                </p>
+                                                <p class="sm">When first starting your leveling journey, a good way to
+                                                    earn XP is to kill the low difficulty spawns around the NPC cities.
+                                                </p>
+                                                <p class="sm">To read more useful information about getting started on
+                                                    SWG Awakening take a look at this <a
+                                                        href="https://swgawakening.com/viewtopic.php?f=42&t=10876"
+                                                        class="sm">player written guide</a>.</p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="config-section-header">Game &amp Launcher Settings
+                                <div class="closeConfigPrompt config-prompt-close"></div>
+                            </div>
+                            <div class="config-options">
+                                <div class="config-col left-col">
+                                    <div class="swga-folder">
+                                        <div class="config-label">Game Files
+                                        </div>
+                                        <div>
+                                            <button class="tooltip float-right"
+                                                tooltip="Change the installation directory of SWG Awakening."
+                                                tooltip-position="top">?</button>
+                                            <div class="config-label-sm">Installation Directory</div>
+                                        </div>
+                                        <div class="row">
+                                            <div class="column col-4">
+                                                <input id="gameDir" type="text" class="input game-directory-input"
+                                                    disabled />
+                                            </div>
+                                            <div class="column col-2 browse-column">
+                                                <button id="changeDirBtn"
+                                                    class="swga-button-sm full-width uppercase">Change</button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <hr>
+                                    <div>
+                                        <div class="row">
+                                            <div class="column col-2">
+                                                <button class="tooltip float-right"
+                                                    tooltip="Verify the integrity of your game files. This could take a while."
+                                                    tooltip-position="top">?</button>
+                                                <div class="config-label-sm">Full Scan</div>
+                                                <button id="verifyBtn" class="swga-button-sm full-width">Verify
+                                                    Files</button>
+                                            </div>
+                                            <div class="column col-2"></div>
+                                            <div class="column col-2">
+                                                <button class="tooltip float-right"
+                                                    tooltip="Rerun the setup process for SWG Awakening. No personal data will be lost."
+                                                    tooltip-position="top">?</button>
+                                                <div class="config-label-sm">Game Setup</div>
+                                                <button id="configSetupBtn" class="swga-button-sm full-width">Run
+                                                    Setup</button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="swga-checkbox">
+                                        <input type="checkbox" id="enableSounds" name="enableSounds" value="agreed">
+                                        <label for="enableSounds">Enable Launcher Sounds</label>
+                                    </div>
+                                </div>
+                                <div class="config-col right-col">
+                                    <div class="swga-swg-config">
+                                        <p class="config-label">SWG Config</p>
+                                        <div class="row">
+                                            <div class="column col-2">
+                                                <div class="config-label-sm">Memory</div>
+                                                <select id="ram" class="full-width">
+                                                    <option value="2048">2 GB</option>
+                                                    <option value="1536">1.5 GB</option>
+                                                    <option value="1024">1 GB</option>
+                                                    <option value="750">750 MB</option>
+                                                </select>
+                                            </div>
+                                            <div class="column col-2 col-spacer-6">
+                                                <div class="config-label-sm">FPS</div>
+                                                <select id="fps" class="full-width">
+                                                    <option value="120">120 (Manually disable VSync in SWG OPTIONS)
+                                                    </option>
+                                                    <option value="60">60</option>
+                                                    <option value="30">30</option>
+                                                </select>
+                                            </div>
+                                            <div class="column col-2 col-spacer-6">
+                                                <div class="config-label-sm">Zoom</div>
+                                                <select id="zoom" class="full-width">
+                                                    <option value="1">1 (default)</option>
+                                                    <option value="3">3</option>
+                                                    <option value="5">5 (med)</option>
+                                                    <option value="7">7</option>
+                                                    <option value="10">10 (far)</option>
+                                                </select>
+                                            </div>
+                                        </div>
+                                        <hr>
+                                        <div class="row">
+                                            <div class="column col-6">
+                                                <button class="tooltip float-right"
+                                                    tooltip="Switching a login server will convert your installation. Please do not change your primary installation to a test version without having a backup."
+                                                    tooltip-position="top">?</button>
+                                                <div class="config-label-sm">Login Server</div>
+                                                <select id="loginServerSelect" class="full-width" data-previous="">
+                                                    <option value="live">Live Server</option>
+                                                    <option value="test">Test Server</option>
+                                                </select>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="right-section-container">
+                        <div class="options-buttons">
+                            <button id="swgOptionsBtn"
+                                class="option-button swga-button swga-btn-icon swga-btn-icon-left">SWG Options</button>
+                            <button id="gameConfigBtn"
+                                class="option-button swga-button swga-btn-icon swga-btn-icon-left">Settings</button>
+                        </div>
+                        <div id="mainButtonLinks">
+                            <a href="http://galaxyharvester.net/ghHome.py?" class="button-link button-resources"
+                                tooltip="Don't forget to set the galaxy to 'SWG Awakening' to see resources from our server!"
+                                tooltip-position="top"></a>
+                            <button id="skillPlanner" class="button-link button-skillplanner"></button>
+                            <a href="https://topg.org/swg-private-servers/in-400120"
+                                class="button-link button-topg"></a>
+                            <a href="https://swgawakening.com/donate" class="button-link button-donate"></a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="bottom-section">
+            <div class="progress-container">
+                <div class="progress-stats">
+                    <button id="cancelBtn">Cancel</button>
+                    <div id="progresstext">100%</div>
+                </div>
+                <div class="progress-bar">
+                    <div id="progress"></div>
+                </div>
+                <div class="server-stats">
+                    <div class="server-stat-data">Server Status: <span id="serverStatus">Unknown</span></div>
+                    <div class="server-stat-data">Server Uptime: <span id="serverUptime">-:-:-:-</span></div>
+                    <div class="server-stat-data">Active Server: <span id="activeServer"></span></div>
+                    <div class="server-stat-data">Launcher Version: <span id="version"></span></div>
+                </div>
+            </div>
+            <div class="play-button-container">
+                <button id="play" class="button" disabled>Play</button>
+            </div>
+        </div>
+    </div>
+</body>
+
+<script>
     require('./renderer.js')
-  </script>
+</script>
+
 </html>

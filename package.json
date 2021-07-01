@@ -1,59 +1,59 @@
 {
-  "name": "swg-awakening-launcher",
-  "version": "1.1.9",
-  "description": "SWG Awakening Launcher",
-  "main": "main.js",
-  "scripts": {
-    "start": "electron .",
-    "build-win": "build --win --ia32 -p never",
-    "deploy-win": "build --win --ia32 -p always",
-    "build-linux": "build --linux --x64",
-    "build-mac": "build --mac --x64"
-  },
-  "repository": "https://github.com/CycloneAwakening/SWGAwakening",
-  "homepage": "https://swgawakening.com/portal",
-  "keywords": [
-    "swga",
-    "awakening",
-    "launcher",
-    "installer",
-    "swg",
-    "star",
-    "wars",
-    "galaxies",
-    "emulator",
-    "emu",
-    "swgemu"
-  ],
-  "author": "SWG Awakening",
-  "license": "CC0-1.0",
-  "devDependencies": {
-    "electron": "^10.1.2",
-    "electron-builder": "^20.44.4"
-  },
-  "dependencies": {
-    "adm-zip": "^0.4.16",
-    "electron-is-dev": "^0.2.0",
-    "electron-log": "^2.2.17",
-    "electron-updater": "^4.3.5",
-    "follow-redirects": "^1.13.0",
-    "mkdirp": "^0.5.5",
-    "random-access-file": "^1.8.1",
-    "request": "^2.88.2"
-  },
-  "build": {
-    "productName": "SWG Awakening Launcher",
-    "win": {
-      "requestedExecutionLevel": "highestAvailable",
-      "target": [
-        "nsis",
-        "zip"
-      ]
+    "name": "swg-awakening-launcher",
+    "version": "1.2.0",
+    "description": "SWG Awakening Launcher",
+    "main": "main.js",
+    "scripts": {
+        "start": "electron .",
+        "build-win": "build --win --ia32 -p never",
+        "deploy-win": "build --win --ia32 -p always",
+        "build-linux": "build --linux --x64",
+        "build-mac": "build --mac --x64"
     },
-    "nsis": {
-      "perMachine": true,
-      "oneClick": false,
-      "allowToChangeInstallationDirectory": true
+    "repository": "https://github.com/CycloneAwakening/SWGAwakening",
+    "homepage": "https://swgawakening.com/portal",
+    "keywords": [
+        "swga",
+        "awakening",
+        "launcher",
+        "installer",
+        "swg",
+        "star",
+        "wars",
+        "galaxies",
+        "emulator",
+        "emu",
+        "swgemu"
+    ],
+    "author": "SWG Awakening",
+    "license": "CC0-1.0",
+    "devDependencies": {
+        "electron": "^11.2.3",
+        "electron-builder": "^20.44.4"
+    },
+    "dependencies": {
+        "adm-zip": "^0.4.16",
+        "electron-is-dev": "^0.2.0",
+        "electron-log": "^2.2.17",
+        "electron-updater": "^4.3.5",
+        "follow-redirects": "^1.13.0",
+        "mkdirp": "^0.5.5",
+        "random-access-file": "^1.8.1",
+        "request": "^2.88.2"
+    },
+    "build": {
+        "productName": "SWG Awakening Launcher",
+        "win": {
+            "requestedExecutionLevel": "highestAvailable",
+            "target": [
+                "nsis",
+                "zip"
+            ]
+        },
+        "nsis": {
+            "perMachine": true,
+            "oneClick": false,
+            "allowToChangeInstallationDirectory": true
+        }
     }
-  }
 }

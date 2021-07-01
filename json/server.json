@@ -1,8 +1,18 @@
 {
-	"live": [
-		{"address":"login.swgawakening.com","port":"44453","manifestUrl":"http://patcher.swgawakening.com/launcher/live/manager/manifest.json","statusUrl":"https://swgawakening.com/server-status.php?c=live"}
-	],
-	"test": [
-		{"address":"test.swgawakening.com","port":"44453","manifestUrl":"http://patcher.swgawakening.com/launcher/test/manager/manifest.json","statusUrl":"https://swgawakening.com/server-status.php?c=test"}
-	]
+    "live": [
+        {
+            "address": "login.swgawakening.com",
+            "port": "44453",
+            "manifestUrl": "http://patcher.swgawakening.com/launcher/live/manager/manifest.json",
+            "statusUrl": "https://swgawakening.com/server-status.php?c=live"
+        }
+    ],
+    "test": [
+        {
+            "address": "test.swgawakening.com",
+            "port": "44453",
+            "manifestUrl": "http://patcher.swgawakening.com/launcher/test/manager/manifest.json",
+            "statusUrl": "https://swgawakening.com/server-status.php?c=test"
+        }
+    ]
 }

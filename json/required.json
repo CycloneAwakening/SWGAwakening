@@ -1,6 +1,6 @@
 [
 	{"name":"Mss32.dll","size":370688,"md5":"299be9656aec687795e429a7000facc9","url":"http://patcher.swgawakening.com/launcher/common/Mss32.dll"},
-	{"name":"SWGEmu.exe","size":22061142,"md5":"582f8324c2b280b6b1de1fd00180729d","url":"http://patcher.swgawakening.com/launcher/common/SWGEmu.exe"}, 
+	{"name":"SWGEmu.exe","size":0,"md5":0,"url":"http://patcher.swgawakening.com/launcher/common/SWGEmu.exe"}, 
 	{"name":"SWGEmu_Setup.exe","size":536576,"md5":"aefaeda4c825dae81e746fb5e2eb9d5a","url":"http://patcher.swgawakening.com/launcher/common/SWGEmu_Setup.exe"}, 
 	{"name":"dbghelp.dll","size":676864,"md5":"21e77bcbe81c83284aeea5127c197718","url":"http://patcher.swgawakening.com/launcher/common/dbghelp.dll"}, 
 	{"name":"dpvs.dll","size":142336,"md5":"fd25c516087edba23f1f403a65769240","url":"http://patcher.swgawakening.com/launcher/common/dpvs.dll"}, 

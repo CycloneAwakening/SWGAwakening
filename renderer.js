@@ -60,7 +60,7 @@ const activeServer = document.getElementById('activeServer');
 const versionDiv = document.getElementById('version');
 
 const configFile = os.homedir() + '/Documents/My Games/SWG - Awakening/SWG-Awakening-Launcher-config.json';
-var config = {folder: 'C:\\SWGAwakening'};
+var config = { folder: 'C:\\SWGAwakening' };
 
 const launchSound = document.getElementById('launcherSound');
 const buttonClickSound = document.getElementById('buttonClickSound');
@@ -97,34 +97,34 @@ if ((config.buttonhoversrc != " " && config.buttonhoversrc != butHoverSound)) {
 }
 buttonHoverSound.src = config.buttonhoversrc;
 
-if (config.soundsrc == openSound)  {
-	enableSounds.checked = true;
+if (config.soundsrc == openSound) {
+    enableSounds.checked = true;
 } else {
-	enableSounds.checked = false;
+    enableSounds.checked = false;
 }
 
 function buttonPlaySound(audioType) {
-	audioType.cloneNode(true).play();
+    audioType.cloneNode(true).play();
 }
 
 wrapper.addEventListener('click', (event) => {
-	const isButton = event.target.nodeName === 'BUTTON';
-	const isA = event.target.nodeName === 'A';
-	if (!isButton && !isA) {
-		return;
-	}
+    const isButton = event.target.nodeName === 'BUTTON';
+    const isA = event.target.nodeName === 'A';
+    if (!isButton && !isA) {
+        return;
+    }
 
-	buttonPlaySound(buttonClickSound);
+    buttonPlaySound(buttonClickSound);
 })
-	
-wrapper.addEventListener('mouseover', (event) => {
-	const isButton = event.target.nodeName === 'BUTTON';
-	const isA = event.target.nodeName === 'A';
-	if (!isButton && !isA) {
-		return;
-	}
 
-	buttonPlaySound(buttonHoverSound);
+wrapper.addEventListener('mouseover', (event) => {
+    const isButton = event.target.nodeName === 'BUTTON';
+    const isA = event.target.nodeName === 'A';
+    if (!isButton && !isA) {
+        return;
+    }
+
+    buttonPlaySound(buttonHoverSound);
 })
 
 //End of launcher sound function (exception enable sounds button)
@@ -158,81 +158,81 @@ activeServer.innerHTML = server[config.login][0].address;
 getServerStatus(config.login);
 
 function getServerStatus(serverLogin) {
-        request({url:server[serverLogin][0].statusUrl, json:true, rejectUnauthorized:false}, function(err, response, body) {
-            if (err) return console.error(err);
-            if (body.status != undefined) {
-				serverStatus.innerHTML = body.status;
-				switch (serverStatus.innerHTML)  {
-					case "Online":
-					  serverStatus.style.color = 'green';
-					  break;
-					case "Loading":
-					  serverStatus.style.color = 'yellow';
-					  break;
-					case "Locked":
-					  serverStatus.style.color = '#FF7722';
-					  break;
-					default: //Handles Offline or Unknown
-					  serverStatus.style.color = '#CC1100';
-				}
+    request({ url: server[serverLogin][0].statusUrl, json: true, rejectUnauthorized: false }, function (err, response, body) {
+        if (err) return console.error(err);
+        if (body.status != undefined) {
+            serverStatus.innerHTML = body.status;
+            switch (serverStatus.innerHTML) {
+                case "Online":
+                    serverStatus.style.color = 'green';
+                    break;
+                case "Loading":
+                    serverStatus.style.color = 'yellow';
+                    break;
+                case "Locked":
+                    serverStatus.style.color = '#FF7722';
+                    break;
+                default: //Handles Offline or Unknown
+                    serverStatus.style.color = '#CC1100';
             }
-			
-			if (body.uptime != undefined) {
-				serverUptime.innerHTML = body.uptime;
-			}
-			
-			if (body.donation-goal != 0 || body.donation-goal != undefined) {
-				var goal = body.donation_goal;
-				var received = body.donations_received;
-				donationText.innerHTML = 'Donation Statistics: $' + received + ' received of the $' + goal + ' goal (' + Math.trunc(received * 100 / goal) + '%).';
-				if ((received * 100 / goal) <= 100) {
-					donationBar.style.width = (received * 100 / goal) + '%';
-				}
-			}
-			
-			if(serverStatus.innerHTML == "Unknown" || serverStatus.innerHTML == "Offline"){
-				getServerStatusRetry(serverLogin);
-			}
-        });
+        }
+
+        if (body.uptime != undefined) {
+            serverUptime.innerHTML = body.uptime;
+        }
+
+        if (body.donation - goal != 0 || body.donation - goal != undefined) {
+            var goal = body.donation_goal;
+            var received = body.donations_received;
+            donationText.innerHTML = 'Donation Statistics: $' + received + ' received of the $' + goal + ' goal (' + Math.trunc(received * 100 / goal) + '%).';
+            if ((received * 100 / goal) <= 100) {
+                donationBar.style.width = (received * 100 / goal) + '%';
+            }
+        }
+
+        if (serverStatus.innerHTML == "Unknown" || serverStatus.innerHTML == "Offline") {
+            getServerStatusRetry(serverLogin);
+        }
+    });
 }
 
 function getServerStatusRetry(serverLogin) {
-		for(var i = 10; i > 0; i--){
-			if(serverStatus.innerHTML == "Unknown" || serverStatus.innerHTML == "Offline"){
-				request({url:server[serverLogin][0].statusUrl, json:true}, function(err, response, body) {
-					if (err) return console.error(err);
-					if (body.status != undefined) {
-						serverStatus.innerHTML = body.status;
-						switch (serverStatus.innerHTML)  {
-							case "Online":
-							  serverStatus.style.color = 'green';
-							  break;
-							case "Loading":
-							  serverStatus.style.color = 'yellow';
-							  break;
-							case "Locked":
-							  serverStatus.style.color = '#FF7722';
-							  break;
-							default: //Handles Offline or Unknown
-							  serverStatus.style.color = '#CC1100';
-						}
-					}
-					
-					if (body.uptime != undefined) {
-						serverUptime.innerHTML = body.uptime;
-					}
-					
-					if (body.donation_goal != 0 || body.donation_goal != undefined) {
-						var goal = body.donation_goal;
-						var received = body.donations_received;
-						donationText.innerHTML = 'Donation Statistics: $' + received + ' received of the $' + goal + ' goal (' + Math.trunc(received * 100 / goal) + '%).';
-						if ((received * 100 / goal) <= 100) {
-							donationBar.style.width = (received * 100 / goal) + '%';
-						}
-					}
-				});
-			}
-		}
+    for (var i = 10; i > 0; i--) {
+        if (serverStatus.innerHTML == "Unknown" || serverStatus.innerHTML == "Offline") {
+            request({ url: server[serverLogin][0].statusUrl, json: true }, function (err, response, body) {
+                if (err) return console.error(err);
+                if (body.status != undefined) {
+                    serverStatus.innerHTML = body.status;
+                    switch (serverStatus.innerHTML) {
+                        case "Online":
+                            serverStatus.style.color = 'green';
+                            break;
+                        case "Loading":
+                            serverStatus.style.color = 'yellow';
+                            break;
+                        case "Locked":
+                            serverStatus.style.color = '#FF7722';
+                            break;
+                        default: //Handles Offline or Unknown
+                            serverStatus.style.color = '#CC1100';
+                    }
+                }
+
+                if (body.uptime != undefined) {
+                    serverUptime.innerHTML = body.uptime;
+                }
+
+                if (body.donation_goal != 0 || body.donation_goal != undefined) {
+                    var goal = body.donation_goal;
+                    var received = body.donations_received;
+                    donationText.innerHTML = 'Donation Statistics: $' + received + ' received of the $' + goal + ' goal (' + Math.trunc(received * 100 / goal) + '%).';
+                    if ((received * 100 / goal) <= 100) {
+                        donationBar.style.width = (received * 100 / goal) + '%';
+                    }
+                }
+            });
+        }
+    }
 }
 
 minBtn.addEventListener('click', event => remote.getCurrentWindow().minimize());
@@ -311,37 +311,42 @@ function play() {
     var env = Object.create(require('process').env);
     env.SWGCLIENT_MEMORY_SIZE_MB = config.ram;
     if (os.platform() === 'win32') {
-      const child = process.spawn("SWGEmu.exe", args, {cwd: config.folder, env: env, detached: true, stdio: 'ignore'});
-      child.unref();
+        const child = process.spawn("SWGEmu.exe", args, { cwd: config.folder, env: env, detached: true, stdio: 'ignore' });
+        child.unref();
     } else {
-      const child = process.exec('wine SWGEmu.exe', {cwd: config.folder, env: env, detached: true, stdio: 'ignore'}, function(error, stdout, stderr){});
-      child.unref();
+        const child = process.exec('wine SWGEmu.exe', { cwd: config.folder, env: env, detached: true, stdio: 'ignore' }, function (error, stdout, stderr) { });
+        child.unref();
     }
 }
 
-//SKILLPLANNER EXE 
+/*
+ * ---------------------
+ *    Skill Planner Executable
+ * ---------------------
+ */
 skillPlanner.addEventListener('click', event => {
-       if (os.platform() === 'win32') {
-        const child = process.spawn("cmd", ["/c", path.join(config.folder, "KSWGProfCalcEditor.exe")], {cwd: config.folder, detached: true, stdio: 'ignore'});
+    if (os.platform() === 'win32') {
+        const child = process.spawn("cmd", ["/c", path.join(config.folder, "KSWGProfCalcEditor.exe")], { cwd: config.folder, detached: true, stdio: 'ignore' });
         child.unref();
-      } else {
-        const child = process.exec('wine KSWGProfCalcEditor.exe', {cwd: config.folder, detached: true, stdio: 'ignore'}, function(error, stdout, stderr){});
+    } else {
+        const child = process.exec('wine KSWGProfCalcEditor.exe', { cwd: config.folder, detached: true, stdio: 'ignore' }, function (error, stdout, stderr) { });
         child.unref();
-      }
+    }
 });
 
 swgOptionsBtn.addEventListener('click', event => {
     if (os.platform() === 'win32') {
-        const child = process.spawn("cmd", ["/c", path.join(config.folder, "SWGEmu_Setup.exe")], {cwd: config.folder, detached: true, stdio: 'ignore'});
+        const child = process.spawn("cmd", ["/c", path.join(config.folder, "SWGEmu_Setup.exe")], { cwd: config.folder, detached: true, stdio: 'ignore' });
         child.unref();
-      } else {
-        const child = process.exec('wine SWGEmu_Setup.exe', {cwd: config.folder, detached: true, stdio: 'ignore'}, function(error, stdout, stderr){});
+    } else {
+        const child = process.exec('wine SWGEmu_Setup.exe', { cwd: config.folder, detached: true, stdio: 'ignore' }, function (error, stdout, stderr) { });
         child.unref();
-      }
+    }
 });
 
 gameConfigBtn.addEventListener('click', event => {
-    if (gameConfigSection.style.display == 'none') {
+    if (gameConfigSection.style.display == 'none' || gameConfigBtn.className == "option-button swga-button swga-btn-icon swga-btn-icon-left") {
+        configOverlayClose(true);
         gameConfigSection.style.display = 'block';
         gameConfigBtn.className = "option-button swga-button swga-btn-icon swga-btn-icon-left active";
     } else {
@@ -351,47 +356,47 @@ gameConfigBtn.addEventListener('click', event => {
     }
 });
 
-headerLinks.addEventListener('click', function(e) {
+headerLinks.addEventListener('click', function (e) {
     e.preventDefault();
-    if(e.target.classList.contains("header-link"))
+    if (e.target.classList.contains("header-link"))
         shell.openExternal(e.target.href);
 });
 
-headerLinks.addEventListener('auxclick', function(e) {
+headerLinks.addEventListener('auxclick', function (e) {
     e.preventDefault();
-    if(e.target.classList.contains("header-link"))
+    if (e.target.classList.contains("header-link"))
         shell.openExternal(e.target.href);
 });
 
-mainButtonLinks.addEventListener('click', function(e) {
+mainButtonLinks.addEventListener('click', function (e) {
     e.preventDefault();
-    if(e.target.classList.contains("button-link"))
+    if (e.target.classList.contains("button-link"))
         shell.openExternal(e.target.href);
 });
 
-mainButtonLinks.addEventListener('auxclick', function(e) {
+mainButtonLinks.addEventListener('auxclick', function (e) {
     e.preventDefault();
-    if(e.target.classList.contains("button-link"))
+    if (e.target.classList.contains("button-link"))
         shell.openExternal(e.target.href);
 });
 
-newsUpdatesView.addEventListener('will-navigate', function(e) {
+newsUpdatesView.addEventListener('will-navigate', function (e) {
     const protocol = require('url').parse(e.url).protocol;
     if (protocol === 'http:' || protocol === 'https:')
         shell.openExternal(e.url);
     newsUpdatesView.stop();
 });
 
-newsUpdatesView.addEventListener('dom-ready', function(e) {
+newsUpdatesView.addEventListener('dom-ready', function (e) {
     newsUpdatesRefresh.className = 'news-updates-refresh hidden';
     newsUpdatesView.style.opacity = '1';
-    setTimeout(function(){
+    setTimeout(function () {
         newsUpdatesRefresh.disabled = false;
         newsUpdatesRefresh.className = 'news-updates-refresh';
     }, 2000);
 });
 
-newsUpdatesRefresh.addEventListener('click', function(e) {
+newsUpdatesRefresh.addEventListener('click', function (e) {
     newsUpdatesRefresh.disabled = true;
     newsUpdatesRefresh.className = 'news-updates-refresh spinner';
     newsUpdatesView.reloadIgnoringCache();
@@ -403,23 +408,23 @@ newsUpdatesRefresh.addEventListener('click', function(e) {
  *    Launcher Config
  * ---------------------
  */
- 
+
 enableSounds.addEventListener('click', function (event) {
     if (enableSounds.checked) {
-		config.soundsrc = openSound;
-		config.buttonclicksrc = butClickSound;
-		config.buttonhoversrc = butHoverSound;
-		buttonClickSound.src = config.buttonclicksrc
-		buttonHoverSound.src = config.buttonhoversrc
-		saveConfig();
+        config.soundsrc = openSound;
+        config.buttonclicksrc = butClickSound;
+        config.buttonhoversrc = butHoverSound;
+        buttonClickSound.src = config.buttonclicksrc
+        buttonHoverSound.src = config.buttonhoversrc
+        saveConfig();
     } else {
-		config.soundsrc = " ";
-		config.buttonclicksrc = " ";
-		config.buttonhoversrc = " ";
-		saveConfig();
-		launchSound.src = config.soundsrc;
-		buttonClickSound.src = config.buttonclicksrc
-		buttonHoverSound.src = config.buttonhoversrc
+        config.soundsrc = " ";
+        config.buttonclicksrc = " ";
+        config.buttonhoversrc = " ";
+        saveConfig();
+        launchSound.src = config.soundsrc;
+        buttonClickSound.src = config.buttonclicksrc
+        buttonHoverSound.src = config.buttonhoversrc
     }
 });
 
@@ -443,7 +448,7 @@ zoomSel.addEventListener('change', event => {
     saveConfig();
 });
 
-// "Change" button pressed
+// "Change" directory button button pressed
 changeDirBtn.addEventListener('click', function (event) {
     ipc.send('open-directory-dialog', 'selected-directory');
 });
@@ -489,12 +494,12 @@ loginServerConfirm.addEventListener('click', function (event) {
     saveConfig();
     loginServerSel.setAttribute("data-previous", config.login);
     activeServer.className = "no-opacity";
-    setTimeout(function(){activeServer.className = "fade-in";},1000);
+    setTimeout(function () { activeServer.className = "fade-in"; }, 1000);
     activeServer.innerHTML = server[config.login][0].address;
     serverStatus.className = "no-opacity";
-    setTimeout(function(){serverStatus.className = "fade-in";},1000);
-	serverUptime.className = "no-opacity";
-    setTimeout(function(){serverUptime.className = "fade-in";},1000);
+    setTimeout(function () { serverStatus.className = "fade-in"; }, 1000);
+    serverUptime.className = "no-opacity";
+    setTimeout(function () { serverUptime.className = "fade-in"; }, 1000);
     getServerStatus(config.login);
     disableAll(true);
     resetProgress();
@@ -523,12 +528,12 @@ helpBtn.addEventListener('click', function (event) {
     }
 });
 
-helpLinks.addEventListener('click', function(e) {
+helpLinks.addEventListener('click', function (e) {
     e.preventDefault();
     shell.openExternal(e.target.href);
 });
 
-setupComplete.addEventListener('click', function(e) {
+setupComplete.addEventListener('click', function (e) {
     e.preventDefault();
     shell.openExternal(e.target.href);
 });
@@ -540,11 +545,12 @@ function configOverlayPrompt(promptID) {
     for (i = 0; i < prompts.length; i++)
         prompts[i].className = prompts[i].className.replace(" active", "");
     document.getElementById(promptID).classList.add("active");
+    gameConfigBtn.className = "option-button swga-button swga-btn-icon swga-btn-icon-left";
 }
 
 // Close prompt button pressed
-Object.entries(closeConfigPrompt).map(( object ) => {
-    object[1].addEventListener("click", function() {
+Object.entries(closeConfigPrompt).map((object) => {
+    object[1].addEventListener("click", function () {
         configOverlayClose(true);
     });
 });
@@ -557,14 +563,16 @@ function configOverlayClose(exit) {
         if (promptAttr != '' && promptVal != '')
             document.getElementById(promptAttr).value = promptVal;
     }
+    gameConfigBtn.className = "option-button swga-button swga-btn-icon swga-btn-icon-left";
     configPromptClose.setAttribute("data-prompt-attr", "");
     configPromptClose.setAttribute("data-prompt-value", "");
     configPromptOverlay.style.display = "none";
+    gameConfigSection.style.display = 'none';
     helpBtn.disabled = false;
 }
 
 // Progress bar cancel button
-cancelBtn.addEventListener('click', function(event) {
+cancelBtn.addEventListener('click', function (event) {
     install.cancel();
     progressBar.style.width = '100%';
     progressText.className = 'complete';
@@ -576,7 +584,7 @@ ipc.on('downloading-update', function (event, text) {
     disableAll(false);
 });
 
-ipc.on('download-progress', function(event, info) {
+ipc.on('download-progress', function (event, info) {
     install.progress(info.transferred, info.total);
 })
 
@@ -591,7 +599,7 @@ function resetProgress() {
     rate = 0;
 }
 
-install.progress = function(completed, total) {
+install.progress = function (completed, total) {
     var time = new Date();
     var elapsed = (time - lastTime) / 1000;
     if (elapsed >= 1) {
@@ -610,15 +618,15 @@ install.progress = function(completed, total) {
         lastTime = time;
     }
     if (progressText.className == 'complete') progressText.className = 'active';
-        progressText.innerHTML = Math.trunc(completed * 100 / total) + '% (' + parseFloat(rate.toPrecision(3)) + units + ')';
-        progressBar.style.width = (completed * 100 / total) + '%';
+    progressText.innerHTML = Math.trunc(completed * 100 / total) + '% (' + parseFloat(rate.toPrecision(3)) + units + ')';
+    progressBar.style.width = (completed * 100 / total) + '%';
     if (completed == total) {
         enableAll();
         progressText.className = 'complete';
     }
 }
 
-verifyBtn.addEventListener('click', function(event) {
+verifyBtn.addEventListener('click', function (event) {
     verifyFiles();
 });
 
@@ -646,7 +654,7 @@ if (fs.existsSync(path.join(config.folder, 'qt-mt305.dll'))) {
     loginServerConfirm.disabled = true;
     swgOptionsBtn.disabled = true;
     cancelBtn.disabled = true;
-	skillPlanner.disabled = true;
+    skillPlanner.disabled = true;
 }
 
 function disableAll(cancel) {
@@ -657,7 +665,7 @@ function disableAll(cancel) {
     loginServerSel.disabled = true;
     loginServerConfirm.disabled = true;
     helpBtn.disabled = true;
-	skillPlanner.disabled = true;
+    skillPlanner.disabled = true;
     if (cancel == true)
         cancelBtn.disabled = false;
 }
@@ -672,7 +680,7 @@ function enableAll() {
     loginServerSel.disabled = false;
     loginServerConfirm.disabled = false;
     helpBtn.disabled = false;
-	skillPlanner.disabled = false;
+    skillPlanner.disabled = false;
 }
 
 function saveConfig() {
@@ -683,8 +691,8 @@ versionDiv.addEventListener('click', event => remote.getCurrentWindow().toggleDe
 serverStatus.addEventListener('click', event => getServerStatus(config.login));
 serverUptime.addEventListener('click', event => getServerStatus(config.login));
 
-function serverStatLoop () {
-	getServerStatus(config.login);
+function serverStatLoop() {
+    getServerStatus(config.login);
     setTimeout(serverStatLoop, 60000);
 }
 serverStatLoop();

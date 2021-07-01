@@ -3,28 +3,28 @@ const path = require('path');
 const request = require('request');
 const server = require('./json/server');
 
-module.exports.getManifest = function(fullScan, emuPath, checkFiles) {
+module.exports.getManifest = function (fullScan, emuPath, checkFiles) {
     var files = require('./json/required');
 
     const configFile = require('os').homedir() + '/Documents/My Games/SWG - Awakening/SWG-Awakening-Launcher-config.json';
-    var config = {login: 'live'};
+    var config = { login: 'live' };
     if (fs.existsSync(configFile)) config = JSON.parse(fs.readFileSync(configFile));
-    
+
     if (fullScan || emuPath && !fs.existsSync(path.join(emuPath, "swgemu.cfg"))) {
         //force download with size:0, md5:""
         files = files.concat([
-			{name:"live.cfg", size:0, md5:0, url:"http://patcher.swgawakening.com/launcher/live/game_files/live.cfg"}, 
-			{name:"login.cfg", size:0, md5:0, url:"http://patcher.swgawakening.com/launcher/initial_install/login.cfg"}, 
-			{name:"options.cfg", size:0, md5:0, url:"http://patcher.swgawakening.com/launcher/initial_install/options.cfg"}, 
-			{name:"preload.cfg", size:0, md5:0, url:"http://patcher.swgawakening.com/launcher/initial_install/preload.cfg"}, 
-			{name:"swgemu.cfg", size:0, md5:0, url:"http://patcher.swgawakening.com/launcher/initial_install/swgemu.cfg"}, 
-			{name:"user.cfg", size:0, md5:0, url:"http://patcher.swgawakening.com/launcher/initial_install/user.cfg"}, 
-			{name:"swgemu_machineoptions.iff", size:0, md5:0, url:"http://patcher.swgawakening.com/launcher/initial_install/swgemu_machineoptions.iff"}, 
-			{name:"KSWGProfCalc.dat", size:0, md5:0, url:"http://patcher.swgawakening.com/launcher/initial_install/KSWGProfCalc.dat"}, 
-			{name:"KSWGProfCalcEditor.exe", size:0, md5:0, url:"http://patcher.swgawakening.com/launcher/initial_install/KSWGProfCalcEditor.exe"}, 
+            { name: "live.cfg", size: 0, md5: 0, url: "http://patcher.swgawakening.com/launcher/live/game_files/live.cfg" },
+            { name: "login.cfg", size: 0, md5: 0, url: "http://patcher.swgawakening.com/launcher/initial_install/login.cfg" },
+            { name: "options.cfg", size: 0, md5: 0, url: "http://patcher.swgawakening.com/launcher/initial_install/options.cfg" },
+            { name: "preload.cfg", size: 0, md5: 0, url: "http://patcher.swgawakening.com/launcher/initial_install/preload.cfg" },
+            { name: "swgemu.cfg", size: 0, md5: 0, url: "http://patcher.swgawakening.com/launcher/initial_install/swgemu.cfg" },
+            { name: "user.cfg", size: 0, md5: 0, url: "http://patcher.swgawakening.com/launcher/initial_install/user.cfg" },
+            { name: "swgemu_machineoptions.iff", size: 0, md5: 0, url: "http://patcher.swgawakening.com/launcher/initial_install/swgemu_machineoptions.iff" },
+            { name: "KSWGProfCalc.dat", size: 0, md5: 0, url: "http://patcher.swgawakening.com/launcher/initial_install/KSWGProfCalc.dat" },
+            { name: "KSWGProfCalcEditor.exe", size: 0, md5: 0, url: "http://patcher.swgawakening.com/launcher/initial_install/KSWGProfCalcEditor.exe" },
         ]);
     }
-    request({url:server[config.login][0].manifestUrl, json:true}, function(err, response, body) {
+    request({ url: server[config.login][0].manifestUrl, json: true }, function (err, response, body) {
         if (err) return console.error(err);
         files = unionByName(files, body.required);
         if (checkFiles) checkFiles(files);
@@ -42,7 +42,7 @@ function unionByName(a, b) {
 
 var forks = [];
 var canceling = true;
-module.exports.install = function(swgPath, emuPath, fullScan) {
+module.exports.install = function (swgPath, emuPath, fullScan) {
     const child_process = require('child_process');
     canceling = false;
     module.exports.getManifest(fullScan, emuPath, checkFiles);
@@ -59,10 +59,10 @@ module.exports.install = function(swgPath, emuPath, fullScan) {
                 totalBytes += file.size;
         }
 
-        var env = {swgPath, emuPath};
+        var env = { swgPath, emuPath };
         if (fullScan) env.fullScan = true;
-        for (let i = 0; i < 4; i++) {
-            let fork = child_process.fork(__filename, {env});
+        for (let i = 0; i < 1; i++) {
+            let fork = child_process.fork(__filename, { env });
             fork.on('message', m => installedCallback(fork, m));
             fork.send(files[fileIndex++]);
             forks.push(fork);
@@ -90,7 +90,7 @@ module.exports.install = function(swgPath, emuPath, fullScan) {
     }
 }
 
-module.exports.cancel = function() {
+module.exports.cancel = function () {
     canceling = true;
     for (var fork of forks) fork.kill();
     forks = [];
@@ -117,7 +117,7 @@ if (process.send) {
             src = dst;
         fs.stat(src, (err, stats) => {
             if (err) { process.send('err: ' + err); return doDownload(); }
-            if (stats.size != fileInfo.size && fileInfo.size != 0) {process.send("size mismatch actual: " + stats.size + ' expected: ' + fileInfo.size); return doDownload();}
+            if (stats.size != fileInfo.size && fileInfo.size != 0) { process.send("size mismatch actual: " + stats.size + ' expected: ' + fileInfo.size); return doDownload(); }
             if (process.env.fullScan)
                 md5(src, hash => {
                     if (hash != String(fileInfo.md5).toLowerCase() && fileInfo.md5 != 0) {
@@ -139,31 +139,31 @@ if (process.send) {
             process.send("complete: " + fileInfo.name);
             var expectedSize = fileInfo.size;
             if (/\.zip$/.test(fileInfo.name)) expectedSize *= 2;
-            process.send({'complete':expectedSize - progressReported});
+            process.send({ 'complete': expectedSize - progressReported });
         }
         function progress(bytes) {
             progressReported += bytes;
-            process.send({progress: bytes});
+            process.send({ progress: bytes });
         }
     });
 
     function download(url, dest, complete, progress) {
-        try { fs.unlinkSync(dest); } catch (ex){}
+        try { fs.unlinkSync(dest); } catch (ex) { }
         var file = fs.createWriteStream(dest);
         request(url)
-        .on('error', err => {
-            file.close();
-            fs.unlink(dest);
-            if (complete) complete(err.message);
-        })
-        .on('response', res => {
-            res.on('data', d => progress(d.length));
-            if (/\.zip$/.test(dest))
-                res.on('end', () => unzip(dest, complete))
-            else
-                res.on('end', complete);
-        })
-        .pipe(file);
+            .on('error', err => {
+                file.close();
+                fs.unlink(dest);
+                if (complete) complete(err.message);
+            })
+            .on('response', res => {
+                res.on('data', d => progress(d.length));
+                if (/\.zip$/.test(dest))
+                    res.on('end', () => unzip(dest, complete))
+                else
+                    res.on('end', complete);
+            })
+            .pipe(file);
     };
 
     function unzip(dest, complete) {
@@ -173,9 +173,9 @@ if (process.send) {
     }
 
     function md5(file, complete, progress) {
-        var hash = require('crypto').createHash('md5'); 
+        var hash = require('crypto').createHash('md5');
         var stream = fs.createReadStream(file);
-        stream.on('data', data => {progress(data.length); hash.update(data, 'utf8')});
+        stream.on('data', data => { progress(data.length); hash.update(data, 'utf8') });
         stream.on('end', () => complete(hash.digest('hex')));
     }
 

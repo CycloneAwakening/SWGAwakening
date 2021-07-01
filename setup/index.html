@@ -1,183 +1,205 @@
 <!DOCTYPE html>
 <html>
+
 <head>
-	<title>Setup</title>
-  <link rel="stylesheet" href="styles.css" type="text/css" />
+    <title>Setup</title>
+    <link rel="stylesheet" href="styles.css" type="text/css" />
 </head>
+
 <body>
-  <div class="setup-wrap">
-    <div class="setup-bg"></div>
-    <div class="content-wrapper">
-      <div class="window-management">
-        <button id="minimize" class="window-button"></button>
-        <button id="close" class="window-button"></button>
-      </div>
-      <div class="sidebar-section">
-        <img href="https://swgawakening.com/portal" class="swga-logo draggable" src="img/swga-setup-logo.png" />
-        <div class="sidebar-inner">
-          <div class="sidebar-text">
-            <p>This guided setup will walk you through the Star Wars Galaxies, SWG Awakening <strong>game files</strong> installation process.</p>
-          </div>
-          <div id="sidebarLinks">
-			<p><b><u>Useful Links</u></b></p>
-            <a href="https://swgawakening.com/ucp.php?mode=register" class="sidebar-link">Create an Awakening Forum &amp; Game Account</a>
-            <a href="https://swgawakening.com/viewforum.php?f=97" class="sidebar-link">Support / Help (Forums)</a>
-            <a href="https://swgawakening.com/support" class="sidebar-link">Support / Help (Ticket System)</a>
-            <a href="https://swgawakening.com/viewforum.php?f=32" class="sidebar-link">Rules &amp; Policies</a>
-          </div>
-        </div>
-      </div>
-      <div class="main-section">
-        <h2 class="setup-title">SWG Awakening Setup</h2>
-
-        <div id="rulesAgree" class="setup-tab active">
-          <p id="ToSReadOnline" class="config-label">Terms of Service - <a href="https://swgawakening.com/ucp.php?mode=terms">Read Online</a></p>
-            <div class="rules-reg-wrapper">
-              <webview class="rules-reg-view" src="https://swgawakening.com/launcher-terms.php"></webview>
+    <div class="setup-wrap">
+        <div class="setup-bg"></div>
+        <div class="content-wrapper">
+            <div class="window-management">
+                <button id="minimize" class="window-button"></button>
+                <button id="close" class="window-button"></button>
             </div>
-            <div class="rules-terms-checkboxes">
-              <div class="swga-checkbox">
-                <input type="checkbox" id="agreeRules" name="agreeRules" value="agreed">
-                <label for="agreeRules">I agree to the server terms of service.</label>
-              </div>
-          </div>
-          <div class="foot-notes">
-            <hr>
-            <p>Once you have read and agreed to our terms of service, select the <strong>Next</strong> button.</p>
-          </div>
-        </div>
-
-        <div id="installDir" class="setup-tab">
-          <p class="config-label">Game Files Installation Folder</p>
-          <div class="row">
-            <div class="col-5">
-              <div class="setup-tips install-tip">
-                <p>Use the <strong>Install Folder</strong> button to select an installation directory for SWG Awakening <strong>game files</strong>.</p>
-                <p>It's recommended to create a folder named <strong>SWGAwakening</strong> at the root of any hard drive (e.g. <em>C:\SWGAwakening</em>) and install the <strong>game files</strong> to that location.</p>
-              </div>
-            </div>
-          </div>
-          <div class="row">
-            <div class="col-3">
-              <div class="install-location">
-                <p><strong>Selected Directory:</strong></p>
-                <p><input id="folder" type="text" class="input" value="C:\SWGAwakening" disabled/></p>
-              </div>
-              <div class="install-suggested">
-                <p><strong>Suggested Directory:</strong> <span>C:\SWGAwakening</span></p>
-                <p><strong>Suggested Free Space:</strong> <span>4GB</span></p>
-              </div>
-            </div>
-            <div class="col-3">
-              <div id="browse" class="swga-button swga-btn-icon swga-btn-icon-left">Install Folder</div>
-            </div>
-          </div>
-          <div id="cleanUpFilesSection">
-            <hr>
-            <p class="config-label-notice">Previous SWG Awakening Install Detected</p>
-            <div class="setup-tips">
-              Setup has detected a previous installation of SWG Awakening at the selected directory. Would you like to perform a clean up?
-            </div>
-            <div class="row">
-              <div class="col-3">
-                <div class="swga-checkbox">
-                  <input type="checkbox" id="agreeCleanUp" name="agreeCleanUp" value="agreed">
-                  <label for="agreeCleanUp">Delete Unused Files</label>
-                </div>              
-              </div>
-              <div class="col-3">
-                <p class="text-small">This will delete <strong id="cleanUpCount">0</strong> files no longer in use and save <strong id="cleanUpSize">0GB</strong> of hard drive space.</p>
-              </div>
-            </div>
-          </div>
-          <div class="foot-notes">
-            <hr>
-            <p>Once you have selected an installation directory, select <strong>Next</strong> to continue.</p>
-          </div>
-        </div>
-
-        <div id="swgInstall" class="setup-tab">
-          <p class="config-label">Star Wars Galaxies Files</p>
-           <div class="row">
-            <div class="col-5">
-              <div class="setup-tips">
-                <p>To play a Star Wars Galaxies emulator, you must own a copy of Star Wars Galaxies.</p>
-              </div>
-            </div>
-          </div>
-          <div class="row">
-            <div class="swga-checkbox">
-              <input type="checkbox" id="agreeOwner" name="agreeOwner" value="agreed">
-              <label for="agreeOwner">I verify that I own a legal copy of Star Wars Galaxies</label>
-            </div>
-          </div>
-          <div id="swgDirSection">
-            <hr>
-            <div class="row">
-              <p>Locate your Star Wars Galaxies installation using the <strong>SWG Folder</strong> button below. You can not use 14 day trial client or any other trial client.</p>
-            </div>
-            <br>
-            <div class="row">
-              <div class="col-3">
-                <div class="install-location">
-                  <p><strong>Selected Directory:</strong></p>
-                  <p><input id="swgFolder" type="text" class="input" disabled/></p>				  
+            <div class="sidebar-section">
+                <img href="https://swgawakening.com/portal" class="swga-logo draggable" src="img/swga-setup-logo.png" />
+                <div class="sidebar-inner">
+                    <div class="sidebar-text">
+                        <p>This guided setup will walk you through the Star Wars Galaxies, SWG Awakening <strong>game
+                                files</strong> installation process.</p>
+                    </div>
+                    <div id="sidebarLinks">
+                        <p><b><u>Useful Links</u></b></p>
+                        <a href="https://swgawakening.com/ucp.php?mode=register" class="sidebar-link">Create an
+                            Awakening Forum &amp; Game Account</a>
+                        <a href="https://swgawakening.com/viewforum.php?f=97" class="sidebar-link">Support / Help
+                            (Forums)</a>
+                        <a href="https://swgawakening.com/support" class="sidebar-link">Support / Help (Ticket
+                            System)</a>
+                        <a href="https://swgawakening.com/viewforum.php?f=32" class="sidebar-link">Rules &amp;
+                            Policies</a>
+                    </div>
                 </div>
-				<div class="install-suggested">
-					<p><strong>Common Install Location:</strong> <br> <span>C:\Program Files (x86)\StarWarsGalaxies</span></p>
-				</div>
-              </div>
-              <div class="col-3">
-                <div id="install" class="swga-button swga-btn-icon swga-btn-icon-left">SWG Folder</div>
-              </div>
             </div>
-            <div id="swgInstallMessage">
-              <div id="swgInstallMessageSuccess" class="install-msg">
-                <strong>Success</strong> Star Wars Galaxies Installation Detected.
-              </div>
-              <div id="swgInstallMessageFail" class="install-msg">
-                <strong>Failed</strong> Not a Valid Installation of Star Wars Galaxies.
-              </div>
-            </div>
-          </div>
-          <div class="foot-notes">
-            <hr>
-            <p>Complete the above, then select <strong>Finish</strong> to install SWG Awakening.</p>
-          </div>
-        </div>
+            <div class="main-section">
+                <h2 class="setup-title">SWG Awakening Setup</h2>
 
-        <div id="setup-nav">
-          <div class="row">
-            <div class="column col-3">
-              <button id="setupPrev" class="swga-button swga-btn-icon swga-btn-icon-left" style="display:none">Previous</button>
+                <div id="rulesAgree" class="setup-tab active">
+                    <p id="ToSReadOnline" class="config-label">Terms of Service - <a
+                            href="https://swgawakening.com/ucp.php?mode=terms">Read Online</a></p>
+                    <div class="rules-reg-wrapper">
+                        <webview class="rules-reg-view" src="https://swgawakening.com/launcher-terms.php"></webview>
+                    </div>
+                    <div class="rules-terms-checkboxes">
+                        <div class="swga-checkbox">
+                            <input type="checkbox" id="agreeRules" name="agreeRules" value="agreed">
+                            <label for="agreeRules">I agree to the server terms of service.</label>
+                        </div>
+                    </div>
+                    <div class="foot-notes">
+                        <hr>
+                        <p>Once you have read and agreed to our terms of service, select the <strong>Next</strong>
+                            button.</p>
+                    </div>
+                </div>
+
+                <div id="installDir" class="setup-tab">
+                    <p class="config-label">Game Files Installation Folder</p>
+                    <div class="row">
+                        <div class="col-5">
+                            <div class="setup-tips install-tip">
+                                <p>Use the <strong>Install Folder</strong> button to select an installation directory
+                                    for SWG Awakening <strong>game files</strong>.</p>
+                                <p>It's recommended to create a folder named <strong>SWGAwakening</strong> at the root
+                                    of any hard drive (e.g. <em>C:\SWGAwakening</em>) and install the <strong>game
+                                        files</strong> to that location.</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-3">
+                            <div class="install-location">
+                                <p><strong>Selected Directory:</strong></p>
+                                <p><input id="folder" type="text" class="input" value="C:\SWGAwakening" disabled /></p>
+                            </div>
+                            <div class="install-suggested">
+                                <p><strong>Suggested Directory:</strong> <span>C:\SWGAwakening</span></p>
+                                <p><strong>Suggested Free Space:</strong> <span>4GB</span></p>
+                            </div>
+                        </div>
+                        <div class="col-3">
+                            <div id="browse" class="swga-button swga-btn-icon swga-btn-icon-left">Install Folder</div>
+                        </div>
+                    </div>
+                    <div id="cleanUpFilesSection">
+                        <hr>
+                        <p class="config-label-notice">Previous SWG Awakening Install Detected</p>
+                        <div class="setup-tips">
+                            Setup has detected a previous installation of SWG Awakening at the selected directory. Would
+                            you like to perform a clean up?
+                        </div>
+                        <div class="row">
+                            <div class="col-3">
+                                <div class="swga-checkbox">
+                                    <input type="checkbox" id="agreeCleanUp" name="agreeCleanUp" value="agreed">
+                                    <label for="agreeCleanUp">Delete Unused Files</label>
+                                </div>
+                            </div>
+                            <div class="col-3">
+                                <p class="text-small">This will delete <strong id="cleanUpCount">0</strong> files no
+                                    longer in use and save <strong id="cleanUpSize">0GB</strong> of hard drive space.
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="foot-notes">
+                        <hr>
+                        <p>Once you have selected an installation directory, select <strong>Next</strong> to continue.
+                        </p>
+                    </div>
+                </div>
+
+                <div id="swgInstall" class="setup-tab">
+                    <p class="config-label">Star Wars Galaxies Files</p>
+                    <div class="row">
+                        <div class="col-5">
+                            <div class="setup-tips">
+                                <p>To play a Star Wars Galaxies emulator, you must own a copy of Star Wars Galaxies.</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="swga-checkbox">
+                            <input type="checkbox" id="agreeOwner" name="agreeOwner" value="agreed">
+                            <label for="agreeOwner">I verify that I own a legal copy of Star Wars Galaxies</label>
+                        </div>
+                    </div>
+                    <div id="swgDirSection">
+                        <hr>
+                        <div class="row">
+                            <p>Locate your Star Wars Galaxies installation using the <strong>SWG Folder</strong> button
+                                below. You can not use 14 day trial client or any other trial client.</p>
+                        </div>
+                        <br>
+                        <div class="row">
+                            <div class="col-3">
+                                <div class="install-location">
+                                    <p><strong>Selected Directory:</strong></p>
+                                    <p><input id="swgFolder" type="text" class="input" disabled /></p>
+                                </div>
+                                <div class="install-suggested">
+                                    <p><strong>Common Install Location:</strong> <br> <span>C:\Program Files
+                                            (x86)\StarWarsGalaxies</span></p>
+                                </div>
+                            </div>
+                            <div class="col-3">
+                                <div id="install" class="swga-button swga-btn-icon swga-btn-icon-left">SWG Folder</div>
+                            </div>
+                        </div>
+                        <div id="swgInstallMessage">
+                            <div id="swgInstallMessageSuccess" class="install-msg">
+                                <strong>Success</strong> Star Wars Galaxies Installation Detected.
+                            </div>
+                            <div id="swgInstallMessageFail" class="install-msg">
+                                <strong>Failed</strong> Not a Valid Installation of Star Wars Galaxies.
+                            </div>
+                        </div>
+                    </div>
+                    <div class="foot-notes">
+                        <hr>
+                        <p>Complete the above, then select <strong>Finish</strong> to install SWG Awakening.</p>
+                    </div>
+                </div>
+
+                <div id="setup-nav">
+                    <div class="row">
+                        <div class="column col-3">
+                            <button id="setupPrev" class="swga-button swga-btn-icon swga-btn-icon-left"
+                                style="display:none">Previous</button>
+                        </div>
+                        <div class="column col-3">
+                            <button id="setupNext" class="swga-button swga-btn-icon swga-btn-icon-right"
+                                disabled>Next</button>
+                        </div>
+                        <div class="column col-3">
+                            <button id="setupCancel"
+                                class="swga-button swga-btn-icon swga-btn-icon-left">Cancel</button>
+                        </div>
+                    </div>
+                </div>
             </div>
-            <div class="column col-3">
-              <button id="setupNext" class="swga-button swga-btn-icon swga-btn-icon-right" disabled>Next</button>
-            </div>
-            <div class="column col-3">
-              <button id="setupCancel" class="swga-button swga-btn-icon swga-btn-icon-left">Cancel</button>
-            </div>
-          </div>
-        </div>
-      </div>
 
 
-<div class="row" style="display:none">
-  <div class="column col-3">
-    <button id="install" class="swga-button full-width">Install From SWG</button>
-  </div>
-  <div class="column col-2 col-spacer-6">
-    <button id="fullscan" class="swga-button full-width">Full Scan</button>
-  </div>
-  <div class="column col-2 col-spacer-6">
-    <button id="cancel" class="swga-button full-width">Cancel</button>
-  </div>
-  <button id="test" class="swga-button">Enable</button>
-</div>
+            <div class="row" style="display:none">
+                <div class="column col-3">
+                    <button id="install" class="swga-button full-width">Install From SWG</button>
+                </div>
+                <div class="column col-2 col-spacer-6">
+                    <button id="fullscan" class="swga-button full-width">Full Scan</button>
+                </div>
+                <div class="column col-2 col-spacer-6">
+                    <button id="cancel" class="swga-button full-width">Cancel</button>
+                </div>
+                <button id="test" class="swga-button">Enable</button>
+            </div>
 
 
 </body>
-  <script>
+<script>
     require('./setup.js')
-  </script>
+</script>
+
 </html>
