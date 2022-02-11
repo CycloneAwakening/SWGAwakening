@@ -1,6 +1,6 @@
 {
     "name": "swg-awakening-launcher",
-    "version": "1.2.0",
+    "version": "1.2.1",
     "description": "SWG Awakening Launcher",
     "main": "main.js",
     "scripts": {
@@ -51,7 +51,7 @@
             ]
         },
         "nsis": {
-            "perMachine": true,
+            "perMachine": false,
             "oneClick": false,
             "allowToChangeInstallationDirectory": true
         }

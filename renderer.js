@@ -467,7 +467,7 @@ ipc.on('selected-directory', function (event, dir) {
         saveConfig();
         disableAll(true);
         resetProgress();
-        install.install(config.folder, config.folder, false);
+        install.install(config.folder, config.folder, true);
     } else {
         var gameDirPromptDir = document.getElementById('gameDirPromptDir');
         gameDirPromptBox.value = dir;
@@ -503,7 +503,7 @@ loginServerConfirm.addEventListener('click', function (event) {
     getServerStatus(config.login);
     disableAll(true);
     resetProgress();
-    install.install(config.folder, config.folder, false);
+    install.install(config.folder, config.folder, true);
     configOverlayClose(false);
 });
 
@@ -640,7 +640,7 @@ function verifyFiles() {
 if (fs.existsSync(path.join(config.folder, 'qt-mt305.dll'))) {
     disableAll(true);
     resetProgress();
-    install.install(config.folder, config.folder);
+    install.install(config.folder, config.folder, true);
 } else {
     console.log("First Run");
     progressText.innerHTML = "Click the SETUP button to get started."
