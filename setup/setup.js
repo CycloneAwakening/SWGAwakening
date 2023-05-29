@@ -1,11 +1,11 @@
 const ipc = require('electron').ipcRenderer;
 const shell = require('electron').shell;
-const remote = require('electron').remote;
-const fs = require('electron').remote.require('fs');
+const remote = require('@electron/remote');
+const fs = require('fs');
 const process = require('child_process');
 const cleanup = require('../json/cleanup');
 const install = require('../install');
-const path = require('electron').remote.require('path');
+const path = require('path');
 
 const sidebarLinks = document.getElementById('sidebarLinks');
 const rulesAgree = document.getElementById('ToSReadOnline');
