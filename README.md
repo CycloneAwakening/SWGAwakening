@@ -23,7 +23,7 @@ cd SWGAwakening
 # Install dependencies
 npm install
 # Run the app
-npm start
+npm run-script start
 ```
 
 Note: If you're using Linux Bash for Windows, [see this guide](https://www.howtogeek.com/261575/how-to-run-graphical-linux-desktop-applications-from-windows-10s-bash-shell/) or use `node` from the command prompt.
@@ -35,12 +35,9 @@ Commands for building can be found in `package.json` under `scripts`. Argument o
 ### Windows - Public Release
 - Create a [Personal Access Token](https://help.github.com/articles/creating-a-personal-access-token-for-the-command-line/)
 - In Windows, set an Environmental variable in PowerShell with the following command, replacing "YOUR_TOKEN" with the token you generated above: `[Environment]::SetEnvironmentVariable("GH_TOKEN","YOUR_TOKEN","User")` - You may need to restart after running this.
-- `npm pack` - Pack the applications
-- `npm run-script build-win` - Build applications and publish draft to release of your applications repo.
+- `npm run-script deploy-win` - Build applications and publish draft to release of your application's repo.
 
 ### Windows - Local Build
-- In `package.json` - Change `"build-win": "build --win --ia32 -p always",` to `"build-win": "build --win --ia32",`
-- `npm pack` - Pack the applications
 - `npm run-script build-win` - Build applications and publish draft to release of your applications repo.
 - Inside of the `/dist` directory should an executable with your application.
 
