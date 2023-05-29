@@ -1,9 +1,13 @@
+require("@electron/remote/main").initialize();
 const { app, BrowserView, BrowserWindow, ipcMain, dialog } = require('electron');
 const log = require('electron-log');
 const { autoUpdater } = require('electron-updater');
 const path = require('path');
 const url = require('url');
 const fs = require('fs');
+const isDev = require('electron-is-dev');
+
+
 
 var setupWindow = null;
 var err;
@@ -14,9 +18,8 @@ var swgaDir = myGamesDir + '/SWG - Awakening';
 
 app.commandLine.appendSwitch("disable-http-cache");
 
-if (!fs.existsSync(documentsDir)) {
+if (!fs.existsSync(documentsDir))
     fs.mkdirSync(documentsDir);
-}
 
 if (!fs.existsSync(myGamesDir))
     fs.mkdirSync(myGamesDir);
@@ -24,12 +27,14 @@ if (!fs.existsSync(myGamesDir))
 if (!fs.existsSync(swgaDir))
     fs.mkdirSync(swgaDir);
 
-var setupLogFile = swgaDir + '/SWGAwakening-Launcher-log.txt';
+var logFile = swgaDir + '/awakening-launcher-log.txt';
 
-if (!fs.existsSync(setupLogFile))
-    fs.writeFileSync(setupLogFile, " ");
+if (!fs.existsSync(logFile))
+    fs.writeFileSync(logFile, "- Awakening Launcher Log File -\n");
 
-log.transports.file.file = swgaDir + '/SWGAwakening-Launcher-log.txt';
+log.transports.file.resolvePath = () => {
+    return logFile;
+  }
 autoUpdater.logger = log;
 autoUpdater.logger.transports.file.level = 'info';
 
@@ -65,6 +70,8 @@ function createWindow() {
         },
         icon: path.join(__dirname, 'img/launcher-icon.ico')
     });
+	
+	require('@electron/remote/main').enable(mainWindow.webContents);
     mainWindow.loadURL(url.format({
         pathname: path.join(__dirname, 'index.html'),
         protocol: 'file:',
@@ -81,7 +88,9 @@ function createWindow() {
    });
    feed.webContents.loadURL('https://swgawakening.com/launcher-home.php')
    */
-    //if (require('electron-is-dev')) mainWindow.webContents.openDevTools();
+   
+
+    //if (isDev) mainWindow.webContents.openDevTools();
     mainWindow.once('ready-to-show', () => mainWindow.show());
     mainWindow.once('closed', () => mainWindow = null);
 }
@@ -130,6 +139,8 @@ function setupGame() {
             },
             icon: path.join(__dirname, 'img/installer-icon.ico')
         });
+		
+		require('@electron/remote/main').enable(setupWindow.webContents);
         setupWindow.loadURL(url.format({
             pathname: path.join(__dirname, 'setup', 'index.html'),
             protocol: 'file:',
@@ -162,6 +173,6 @@ autoUpdater.on('update-available', info => {
 });
 
 app.on('ready', function () {
-    if (!require('electron-is-dev'))
+    if (!isDev)
         autoUpdater.checkForUpdates();
 });

@@ -1,15 +1,15 @@
 const ipc = require('electron').ipcRenderer;
 const shell = require('electron').shell;
-const remote = require('electron').remote;
-const fs = require('electron').remote.require('fs');
+const remote = require('@electron/remote');
+const fs = require('fs');
 const request = require('request');
-const process = require('electron').remote.require('child_process');
+const process = require('child_process');
 const server = require('./json/server');
 const cleanup = require('./json/cleanup');
 const package = require('./package');
 const install = require('./install');
-const path = require('electron').remote.require('path');
-const os = require('electron').remote.require('os');
+const path = require('path');
+const os = require('os');
 
 const playBtn = document.getElementById('play');
 
