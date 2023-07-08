@@ -6,8 +6,10 @@ const path = require('path');
 const url = require('url');
 const fs = require('fs');
 const isDev = require('electron-is-dev');
+const discordRPC = require('discord-rpc');
+const discordRPCConfig = require('./json/discordrpc');
 
-
+const clientId = discordRPCConfig.clientid;
 
 var setupWindow = null;
 var err;
@@ -98,6 +100,38 @@ function createWindow() {
 app.on('ready', () => setTimeout(createWindow, 100)); // Linux / MacOS transparancy fix
 app.on('window-all-closed', () => app.quit());
 
+discordRPC.register(clientId);
+
+const rpc = new discordRPC.Client({ transport: 'ipc' });
+const startTimestamp = new Date();
+
+async function setActivity() {
+	if (!rpc || !mainWindow) {
+		return;
+	}
+
+	rpc.setActivity({
+		details: discordRPCConfig.details,
+		state: discordRPCConfig.state,
+		startTimestamp,
+		largeImageKey: discordRPCConfig.largeImageKey,
+		largeImageText: discordRPCConfig.largeImageText,
+		smallImageKey: discordRPCConfig.smallImageKey,
+		smallImageText: discordRPCConfig.smallImageText,
+		instance: false,
+	});
+}
+  
+rpc.on('ready', () => {
+	setActivity();
+
+	//activity can only be set every 15 seconds
+	setInterval(() => {
+		setActivity();
+	}, 15e3);
+});
+
+rpc.login({ clientId }).catch(console.error);
 
 ipcMain.on('open-directory-dialog', async (event, response) => {
     const result = await dialog.showOpenDialog({
