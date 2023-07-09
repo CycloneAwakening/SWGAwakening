@@ -130,7 +130,7 @@ wrapper.addEventListener('mouseover', (event) => {
 //End of launcher sound function (exception enable sounds button)
 
 
-if (!config.fps) {
+if (!config.fps || config.fps == 144) {
     config.fps = 60;
     needSave = true;
 }
