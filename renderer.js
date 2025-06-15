@@ -62,12 +62,15 @@ const versionDiv = document.getElementById('version');
 const configFile = os.homedir() + '/Documents/My Games/SWG - Awakening/SWG-Awakening-Launcher-config.json';
 var config = { folder: 'C:\\SWGAwakening' };
 
+// Constants for sound paths
+const OPEN_SOUND = "./sound/awakening.mp3";
+const BUTTON_CLICK_SOUND = "./sound/int_select.wav";
+const BUTTON_HOVER_SOUND = "./sound/ui_rollover.wav";
+
+// Elements for sounds
 const launchSound = document.getElementById('launcherSound');
 const buttonClickSound = document.getElementById('buttonClickSound');
 const buttonHoverSound = document.getElementById('buttonHoverSound');
-const openSound = "./sound/awakening.mp3";
-const butClickSound = "./sound/int_select.wav";
-const butHoverSound = "./sound/ui_rollover.wav";
 const wrapper = document.getElementById('launcher-wrapper'); //Used to apply events to every tag in launcher-wrap div
 const enableSounds = document.getElementById('enableSounds');
 
@@ -77,167 +80,343 @@ gameDirBox.value = config.folder;
 var needSave = false;
 
 /*
- * Launcher Sound Functionality
+ * ---------------------
+ *    Config Loading & Saving
+ * ---------------------
  */
-if (config.soundsrc != " " && config.soundsrc != openSound) {
-    config.soundsrc = openSound;
-    needSave = true;
+ 
+ function saveConfig() {
+    fs.writeFileSync(configFile, JSON.stringify(config));
 }
-launchSound.src = config.soundsrc;
-
-if ((config.buttonclicksrc != " " && config.buttonclicksrc != butClickSound)) {
-    config.buttonclicksrc = butClickSound;
-    needSave = true;
-}
-buttonClickSound.src = config.buttonclicksrc;
-
-if ((config.buttonhoversrc != " " && config.buttonhoversrc != butHoverSound)) {
-    config.buttonhoversrc = butHoverSound;
-    needSave = true;
-}
-buttonHoverSound.src = config.buttonhoversrc;
-
-if (config.soundsrc == openSound) {
-    enableSounds.checked = true;
-} else {
-    enableSounds.checked = false;
-}
-
-function buttonPlaySound(audioType) {
-    audioType.cloneNode(true).play();
-}
-
-wrapper.addEventListener('click', (event) => {
-    const isButton = event.target.nodeName === 'BUTTON';
-    const isA = event.target.nodeName === 'A';
-    if (!isButton && !isA) {
-        return;
+ 
+// Helper to set config defaults
+function setDefault(key, defaultValue) {
+    if (config[key] === undefined || config[key] === null || (key === 'fps' && config[key] === 144)) {
+        config[key] = defaultValue;
+        needSave = true;
     }
-
-    buttonPlaySound(buttonClickSound);
-})
-
-wrapper.addEventListener('mouseover', (event) => {
-    const isButton = event.target.nodeName === 'BUTTON';
-    const isA = event.target.nodeName === 'A';
-    if (!isButton && !isA) {
-        return;
-    }
-
-    buttonPlaySound(buttonHoverSound);
-})
-
-//End of launcher sound function (exception enable sounds button)
-
-
-if (!config.fps || config.fps == 144) {
-    config.fps = 60;
-    needSave = true;
 }
+
+// Set defaults
+setDefault('soundsEnabled', true);
+setDefault('fps', 60);
+setDefault('ram', 2048);
+setDefault('zoom', 1);
+setDefault('login', 'live');
+
+// Apply to UI
+enableSounds.checked = config.soundsEnabled;
 fpsSel.value = config.fps;
-if (!config.ram) {
-    config.ram = 2048;
-    needSave = true;
-}
 ramSel.value = config.ram;
-if (!config.zoom) {
-    config.zoom = 1;
-    needSave = true;
-}
 zoomSel.value = config.zoom;
-if (!config.login) {
-    config.login = "live";
-    needSave = true;
-}
 loginServerSel.value = config.login;
 loginServerSel.setAttribute("data-previous", config.login);
+
+// Save if needed
 if (needSave) saveConfig();
 
+// Update UI
 versionDiv.innerHTML = package.version;
 activeServer.innerHTML = server[config.login][0].address;
 getServerStatus(config.login);
 
-function getServerStatus(serverLogin) {
-    request({ url: server[serverLogin][0].statusUrl, json: true, rejectUnauthorized: false }, function (err, response, body) {
-        if (err) return console.error(err);
-        if (body.status != undefined) {
-            serverStatus.innerHTML = body.status;
-            switch (serverStatus.innerHTML) {
-                case "Online":
-                    serverStatus.style.color = 'green';
-                    break;
-                case "Loading":
-                    serverStatus.style.color = 'yellow';
-                    break;
-                case "Locked":
-                    serverStatus.style.color = '#FF7722';
-                    break;
-                default: //Handles Offline or Unknown
-                    serverStatus.style.color = '#CC1100';
-            }
-        }
+function cleanOldConfig() {
+    const removedKeys = [
+	'soundsrc',
+	'buttonclicksrc',
+	'buttonhoversrc'
+	];
+    let modified = false;
 
-        if (body.uptime != undefined) {
-            serverUptime.innerHTML = body.uptime;
+    removedKeys.forEach(key => {
+        if (key in config) {
+            delete config[key];
+            modified = true;
         }
+    });
 
-        if (body.donation - goal != 0 || body.donation - goal != undefined) {
-            var goal = body.donation_goal;
-            var received = body.donations_received;
-            donationText.innerHTML = 'Donation Statistics: $' + received + ' received of the $' + goal + ' goal (' + Math.trunc(received * 100 / goal) + '%).';
-            if ((received * 100 / goal) <= 100) {
-                donationBar.style.width = (received * 100 / goal) + '%';
-            }
+    if (modified) {
+        saveConfig();
+        console.log("[CONFIG CLEANER] Old config keys removed.");
+    }
+}
+cleanOldConfig();
+
+/*
+ * ---------------------
+ *    Launcher Sound Functionality
+ * ---------------------
+ */
+
+// Load audio sources directly from constants
+function setupSoundSources() {
+    launchSound.src = OPEN_SOUND;
+    buttonClickSound.src = BUTTON_CLICK_SOUND;
+    buttonHoverSound.src = BUTTON_HOVER_SOUND;
+}
+
+// Safely play a sound if sounds are enabled
+function playSound(audioElement) {
+    if (!config.soundsEnabled) return;
+
+    try {
+        audioElement.pause();
+        audioElement.currentTime = 0;
+        audioElement.play();
+    } catch (err) {
+        console.warn(`[SOUND MANAGER] Sound play failed: ${err.message}`);
+    }
+}
+
+// Event delegation for button click and hover
+function setupSoundListeners() {
+    wrapper.addEventListener('click', (event) => {
+        if (isInteractiveElement(event.target)) {
+            playSound(buttonClickSound);
         }
+    });
 
-        if (serverStatus.innerHTML == "Unknown" || serverStatus.innerHTML == "Offline") {
-            getServerStatusRetry(serverLogin);
+    wrapper.addEventListener('mouseover', (event) => {
+        if (isInteractiveElement(event.target)) {
+            playSound(buttonHoverSound);
         }
     });
 }
 
-function getServerStatusRetry(serverLogin) {
-    for (var i = 10; i > 0; i--) {
-        if (serverStatus.innerHTML == "Unknown" || serverStatus.innerHTML == "Offline") {
-            request({ url: server[serverLogin][0].statusUrl, json: true }, function (err, response, body) {
-                if (err) return console.error(err);
-                if (body.status != undefined) {
-                    serverStatus.innerHTML = body.status;
-                    switch (serverStatus.innerHTML) {
-                        case "Online":
-                            serverStatus.style.color = 'green';
-                            break;
-                        case "Loading":
-                            serverStatus.style.color = 'yellow';
-                            break;
-                        case "Locked":
-                            serverStatus.style.color = '#FF7722';
-                            break;
-                        default: //Handles Offline or Unknown
-                            serverStatus.style.color = '#CC1100';
-                    }
-                }
+// Helper: is the element a button or a link
+function isInteractiveElement(element) {
+    const tag = element.tagName.toUpperCase();
+    return tag === 'BUTTON' || tag === 'A';
+}
 
-                if (body.uptime != undefined) {
-                    serverUptime.innerHTML = body.uptime;
-                }
+// Initialize system
+setupSoundSources();
+setupSoundListeners();
 
-                if (body.donation_goal != 0 || body.donation_goal != undefined) {
-                    var goal = body.donation_goal;
-                    var received = body.donations_received;
-                    donationText.innerHTML = 'Donation Statistics: $' + received + ' received of the $' + goal + ' goal (' + Math.trunc(received * 100 / goal) + '%).';
-                    if ((received * 100 / goal) <= 100) {
-                        donationBar.style.width = (received * 100 / goal) + '%';
-                    }
-                }
-            });
-        }
+// Autoplay launchSound if sounds enabled
+if (config.soundsEnabled) {
+    try {
+        launchSound.pause(); // Reset state
+        launchSound.currentTime = 0;
+        launchSound.play().catch(err => {
+            console.warn(`[SOUND MANAGER] Autoplay failed, likely needs user gesture: ${err.message}`);
+        });
+    } catch (err) {
+        console.error(`[SOUND MANAGER] Error playing launch sound: ${err.message}`);
     }
 }
 
+// Toggle sound setting
+enableSounds.addEventListener('click', () => {
+    config.soundsEnabled = enableSounds.checked;
+    saveConfig();
+});
+
+/*
+ * ---------------------
+ *    Server Status Functionality
+ * ---------------------
+ */
+async function getServerStatus(serverLogin) {
+	// Persistent state
+    if (getServerStatus.locked) {
+		console.log("[SERVER STATUS] Tried to start server status check, blocked due to lock.");
+		return;
+	}
+    getServerStatus.locked = true;
+	console.log("[SERVER STATUS] Starting get server status attempt (lock).");
+
+    try {
+        const body = await fetchWithTimeout(server[serverLogin][0].statusUrl, 5000);
+        if (!validateBody(body)) {
+            console.warn("[SERVER STATUS] Invalid body format. Retrying...");
+			updateServerDisplay(body);
+			await getServerStatusRetry(serverLogin);
+            return;
+        }
+
+        updateServerDisplay(body);
+
+		const status = serverStatus.innerHTML.toLowerCase();
+        if (status === "unknown" || status === "offline") {
+            await getServerStatusRetry(serverLogin);
+        }
+
+    } catch (err) {
+        console.error(`[SERVER STATUS] Error fetching server status: ${err.message}`);
+		serverStatus.style.color = '#CC1100';
+		serverStatus.innerHTML = "Error";
+		serverUptime.innerHTML = "--D:--H:--M:--S";
+        donationText.innerHTML = `Error: Unable to retrieve data (MSG: ${err.message})`;
+		donationBar.style.width = "0%";
+		await getServerStatusRetry(serverLogin);
+    } finally {
+        getServerStatus.locked = false;
+		console.log("[SERVER STATUS] Request complete (unlocked).");
+    }
+}
+
+async function getServerStatusRetry(serverLogin) {
+    let retryFailed = true;
+
+    for (let i = 0; i < 5; i++) {
+		const currentStatus = serverStatus.innerHTML.toLowerCase();
+        if (currentStatus !== "unknown" && currentStatus !== "offline") {
+            retryFailed = false;
+            break;
+        }
+
+        try {
+            console.log(`[SERVER STATUS] Retry attempt ${i + 1}...`);
+
+            const body = await fetchWithTimeout(server[serverLogin][0].statusUrl, 5000);
+            if (!validateBody(body)) {
+                console.warn(`[SERVER STATUS] Invalid server response during retry attempt ${i + 1}.`);
+                continue;
+            }
+
+            updateServerDisplay(body);
+
+			const status = serverStatus.innerHTML.toLowerCase();
+            if (status !== "unknown" && serverStatus.innerHTML !== "offline" && !status.includes("error") && !status.includes("invalid")) {
+                console.log(`[SERVER STATUS] Server produced a non-error or offline state during retry attempt ${i + 1}.`);
+                retryFailed = false;
+                break;
+            }
+        } catch (err) {
+            console.warn(`[SERVER STATUS] Retry ${i + 1} failed: ${err.message}`);
+			
+        }
+
+        await new Promise(res => setTimeout(res, 2000 * Math.pow(1.5, i)));
+    }
+
+    if (retryFailed) {
+        console.log("[SERVER STATUS] All retry attempts failed. Displaying failure message.");
+    }
+}
+
+function updateServerDisplay(body) {
+    // Persistent state
+    if (!updateServerDisplay.lastBody) {
+        updateServerDisplay.lastBody = {};
+    }
+
+    const last = updateServerDisplay.lastBody;
+    let updated = false;
+
+    if (body.status !== last.status || serverStatus.innerHTML.toLowerCase().includes("error")) {
+        serverStatus.innerHTML = body.status;
+        switch (body.status) {
+            case "Online":
+                serverStatus.style.color = 'green';
+                break;
+            case "Loading":
+                serverStatus.style.color = 'yellow';
+                break;
+            case "Locked":
+                serverStatus.style.color = '#FF7722';
+                break;
+            default:
+                serverStatus.style.color = '#CC1100'; // Offline, Unknown or Invalid
+        }
+        last.status = body.status;
+        updated = true;
+    }
+
+    if (body.uptime !== last.uptime) {
+        serverUptime.innerHTML = body.uptime;
+        last.uptime = body.uptime;
+        updated = true;
+    }
+
+    // Handle donation section
+    const goal = body.donation_goal;
+    const received = body.donations_received;
+
+    if (goal === undefined || received === undefined) {
+        donationText.innerHTML = "Error: Invalid data received from server";
+        donationBar.style.width = "0%";
+    } else if (
+		goal !== last.donation_goal ||
+		received !== last.donations_received ||
+		donationText.innerHTML.toLowerCase().includes("error")
+	) {
+        const percentage = Math.trunc(received * 100 / goal);
+        donationText.innerHTML = `Donation Statistics: $${received} received of the $${goal} goal (${percentage}%).`;
+
+		donationBar.style.width = `${Math.min(percentage, 100)}%`;
+
+        last.donation_goal = goal;
+        last.donations_received = received;
+        updated = true;
+    }
+
+    if (updated) {
+        console.log(`[SERVER STATUS] UI updated.`);
+    }
+}
+
+function validateBody(body) {
+    if (!body || typeof body !== 'object') {
+        return false;
+    }
+
+     const isValid =
+        typeof body.status === 'string' &&
+        typeof body.uptime === 'string' &&
+        typeof body.donation_goal === 'number' &&
+        typeof body.donations_received === 'number';
+
+    if (!isValid) {
+        body.status = "Invalid";
+        body.uptime = "--D:--H:--M:--S";
+        body.donation_goal = undefined;
+        body.donations_received = undefined;
+    }
+
+    return isValid;
+}
+
+async function fetchWithTimeout(url, timeoutMs) {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), timeoutMs);
+
+    try {
+        const response = await fetch(url, {
+            method: 'GET',
+            headers: { 'Accept': 'application/json' },
+            signal: controller.signal
+        });
+
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+        return await response.json();
+    } finally {
+        clearTimeout(timeout);
+    }
+}
+
+serverStatus.addEventListener('click', event => getServerStatus(config.login));
+
+function serverStatLoop() {
+    getServerStatus(config.login);
+    setTimeout(serverStatLoop, 60000);
+}
+serverStatLoop();
+
+/*
+ * ---------------------
+ *    Window Buttons
+ * ---------------------
+ */
 minBtn.addEventListener('click', event => remote.getCurrentWindow().minimize());
 closeBtn.addEventListener('click', event => remote.getCurrentWindow().close());
 
+/*
+ * ---------------------
+ *    Play Button Logic
+ * ---------------------
+ */
 playBtn.addEventListener('click', event => {
     if (playBtn.disabled) return;
     if (playBtn.classList.contains("game-setup")) {
@@ -295,7 +474,7 @@ ipc.on('setup-begin-install', function (event, args) {
     }
     if (args.swgdir !== '') {
         console.log('Copying over files.');
-        install.install(args.swgdir, config.folder);
+        install.install(args.swgdir, config.folder); //Mark area for file copying - cfg errors potential
     }
     else {
         install.install(config.folder, config.folder, true);
@@ -334,6 +513,11 @@ skillPlanner.addEventListener('click', event => {
     }
 });
 
+/*
+ * ---------------------
+ *    SWG Setup Executable
+ * ---------------------
+ */
 swgOptionsBtn.addEventListener('click', event => {
     if (os.platform() === 'win32') {
         const child = process.spawn("cmd", ["/c", path.join(config.folder, "SWGEmu_Setup.exe")], { cwd: config.folder, detached: true, stdio: 'ignore' });
@@ -344,6 +528,11 @@ swgOptionsBtn.addEventListener('click', event => {
     }
 });
 
+/*
+ * ---------------------
+ *    Game Config Button
+ * ---------------------
+ */
 gameConfigBtn.addEventListener('click', event => {
     if (gameConfigSection.style.display == 'none' || gameConfigBtn.className == "option-button swga-button swga-btn-icon swga-btn-icon-left") {
         configOverlayClose(true);
@@ -356,6 +545,11 @@ gameConfigBtn.addEventListener('click', event => {
     }
 });
 
+/*
+ * ---------------------
+ *    Misc Link Buttons
+ * ---------------------
+ */
 headerLinks.addEventListener('click', function (e) {
     e.preventDefault();
     if (e.target.classList.contains("header-link"))
@@ -380,6 +574,11 @@ mainButtonLinks.addEventListener('auxclick', function (e) {
         shell.openExternal(e.target.href);
 });
 
+/*
+ * ---------------------
+ *    News & Updates View Window
+ * ---------------------
+ */
 newsUpdatesView.addEventListener('will-navigate', function (e) {
     const protocol = require('url').parse(e.url).protocol;
     if (protocol === 'http:' || protocol === 'https:')
@@ -403,38 +602,11 @@ newsUpdatesRefresh.addEventListener('click', function (e) {
     newsUpdatesView.style.opacity = '0';
 });
 
-/*
- * ---------------------
- *    Launcher Config
- * ---------------------
- */
-
-enableSounds.addEventListener('click', function (event) {
-    if (enableSounds.checked) {
-        config.soundsrc = openSound;
-        config.buttonclicksrc = butClickSound;
-        config.buttonhoversrc = butHoverSound;
-        buttonClickSound.src = config.buttonclicksrc
-        buttonHoverSound.src = config.buttonhoversrc
-        saveConfig();
-    } else {
-        config.soundsrc = " ";
-        config.buttonclicksrc = " ";
-        config.buttonhoversrc = " ";
-        saveConfig();
-        launchSound.src = config.soundsrc;
-        buttonClickSound.src = config.buttonclicksrc
-        buttonHoverSound.src = config.buttonhoversrc
-    }
-});
-
 /* 
  * -----------------
  *    Game Config
  * -----------------
  */
-
-// SWG Config
 fpsSel.addEventListener('change', event => {
     config.fps = event.target.value;
     saveConfig();
@@ -571,12 +743,19 @@ function configOverlayClose(exit) {
     helpBtn.disabled = false;
 }
 
+/*
+ * ---------------------
+ *    Progress Bar Logic
+ * ---------------------
+ */
+let cancelledState = false;
 // Progress bar cancel button
 cancelBtn.addEventListener('click', function (event) {
     install.cancel();
     progressBar.style.width = '100%';
     progressText.className = 'complete';
     enableAll();
+	cancelledState = true;
 })
 
 ipc.on('downloading-update', function (event, text) {
@@ -618,13 +797,21 @@ install.progress = function (completed, total) {
         lastTime = time;
     }
     if (progressText.className == 'complete') progressText.className = 'active';
-    progressText.innerHTML = Math.trunc(completed * 100 / total) + '% (' + parseFloat(rate.toPrecision(3)) + units + ')';
+	if(navigator.onLine){
+		progressText.innerHTML = Math.trunc(completed * 100 / total) + '% (' + parseFloat(rate.toPrecision(3)) + units + ')';
     progressBar.style.width = (completed * 100 / total) + '%';
-    if (completed == total) {
+	} else {
+		progressText.innerHTML = "Network Error: File operation failed";
+		progressBar.style.width = '0%';
+		cancelledState = true;
+	}
+    if (completed == total && navigator.onLine) {
         enableAll();
         progressText.className = 'complete';
+		cancelledState = false;
     }
 }
+
 
 verifyBtn.addEventListener('click', function (event) {
     verifyFiles();
@@ -641,6 +828,7 @@ if (fs.existsSync(path.join(config.folder, 'qt-mt305.dll'))) {
     disableAll(true);
     resetProgress();
     install.install(config.folder, config.folder, true);
+	
 } else {
     console.log("First Run");
     progressText.innerHTML = "Click the SETUP button to get started."
@@ -683,16 +871,60 @@ function enableAll() {
     skillPlanner.disabled = false;
 }
 
-function saveConfig() {
-    fs.writeFileSync(configFile, JSON.stringify(config));
+/*
+ * ---------------------
+ *    Network State Handling
+ * ---------------------
+ */
+window.addEventListener('online', handleReconnect);
+window.addEventListener('offline', handleDisconnect);
+
+let isDisconnected = false;
+
+function handleDisconnect() {
+    console.warn("[NETWORK] Disconnected from internet.");
+    isDisconnected = true;
+
+	if(cancelledState === true) {
+		cancelledState = false
+	}
+	
 }
 
+if(!navigator.onLine) {
+	progressText.innerHTML = "Network Error: File operation failed";
+	progressBar.style.width = '0%';
+	cancelledState = true;
+}
+
+async function handleReconnect() {
+    console.log("[NETWORK] Reconnected to internet.");
+    isDisconnected = false;
+
+    // window.location.reload(); // Full reload if necessary
+    getServerStatus(config.login); // Retry status fetch
+    newsUpdatesView.reloadIgnoringCache(); // Reload news and updates feed
+
+    if (
+        cancelledState === true ||
+        progressText.className === 'active' ||
+        cancelBtn.disabled === false
+    ) {
+        install.cancel();
+
+        // Pause for 1 second
+        await new Promise(resolve => setTimeout(resolve, 1000));
+
+        disableAll(true);
+        resetProgress();
+        install.install(config.folder, config.folder, true);
+    }
+}
+
+
+/*
+ * ---------------------
+ *    Launcher Debug
+ * ---------------------
+ */
 versionDiv.addEventListener('click', event => remote.getCurrentWindow().toggleDevTools()); //Launcher debugging tool button on the launcher version section
-serverStatus.addEventListener('click', event => getServerStatus(config.login));
-serverUptime.addEventListener('click', event => getServerStatus(config.login));
-
-function serverStatLoop() {
-    getServerStatus(config.login);
-    setTimeout(serverStatLoop, 60000);
-}
-serverStatLoop();
