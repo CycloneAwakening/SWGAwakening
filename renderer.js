@@ -268,7 +268,7 @@ async function getServerStatus(serverLogin) {
 		serverStatus.style.color = '#CC1100';
 		serverStatus.innerHTML = "Error";
 		serverUptime.innerHTML = "--D:--H:--M:--S";
-        donationText.innerHTML = `Error: Unable to retrieve data (MSG: ${err.message})`;
+        donationText.innerHTML = `Error: Unable to retrieve data (Network Unreachable?)`;
 		donationBar.style.width = "0%";
 		await getServerStatusRetry(serverLogin);
     } finally {
@@ -466,7 +466,7 @@ ipc.on('setup-begin-install', function (event, args) {
     playBtn.innerHTML = "Play";
     playBtn.className = "button";
     swgOptionsBtn.disabled = false;
-    disableAll(false);
+    toggleAll(false);
     helpBtn.disabled = false;
     // Welcome message
     configPromptClose.setAttribute("data-prompt-attr", "setupCompletePrompt");
@@ -686,7 +686,7 @@ ipc.on('selected-directory', function (event, dir) {
         gameDirBox.value = dir;
         config.folder = dir;
         saveConfig();
-        disableAll(true);
+        toggleAll(false, true);
         resetProgress();
         install.install(config.folder, config.folder, true);
     } else {
@@ -732,7 +732,7 @@ loginServerConfirm.addEventListener('click', function (event) {
     serverUptime.className = "no-opacity";
     setTimeout(function () { serverUptime.className = "fade-in"; }, 1000);
     getServerStatus(config.login);
-    disableAll(true);
+    toggleAll(false, true);
     resetProgress();
     install.install(config.folder, config.folder, true);
     configOverlayClose(false);
@@ -813,13 +813,13 @@ cancelBtn.addEventListener('click', function (event) {
     install.cancel();
     progressBar.style.width = '100%';
     progressText.className = 'complete';
-    enableAll();
+    toggleAll(true);
 	cancelledState = true;
 })
 
 ipc.on('downloading-update', function (event, text) {
     versionDiv.innerHTML = text;
-    disableAll(false);
+    toggleAll(false);
 });
 
 ipc.on('download-progress', function (event, info) {
@@ -865,7 +865,7 @@ install.progress = function (completed, total) {
 		cancelledState = true;
 	}
     if (completed == total && navigator.onLine) {
-        enableAll();
+        toggleAll(true)
         progressText.className = 'complete';
 		cancelledState = false;
     }
@@ -878,13 +878,13 @@ verifyBtn.addEventListener('click', function (event) {
 
 function verifyFiles() {
     if (verifyBtn.disabled) return;
-    disableAll(true);
+    toggleAll(false, true);
     resetProgress();
     install.install(config.folder, config.folder, true);
 }
 
 if (fs.existsSync(path.join(config.folder, 'qt-mt305.dll'))) {
-    disableAll(true);
+    toggleAll(false, true);
     resetProgress();
     install.install(config.folder, config.folder, true);
 	
@@ -902,32 +902,34 @@ if (fs.existsSync(path.join(config.folder, 'qt-mt305.dll'))) {
     swgOptionsBtn.disabled = true;
     cancelBtn.disabled = true;
     skillPlanner.disabled = true;
+    ramSel.disabled = true;
+    fpsSel.disabled = true;
+    zoomSel.disabled = true;
 }
 
-function disableAll(cancel) {
-    verifyBtn.disabled = true;
-    playBtn.disabled = true;
-    changeDirBtn.disabled = true;
-    configSetupBtn.disabled = true;
-    loginServerSel.disabled = true;
-    loginServerConfirm.disabled = true;
-    helpBtn.disabled = true;
-    skillPlanner.disabled = true;
-    if (cancel == true)
-        cancelBtn.disabled = false;
-}
+function toggleAll(enable, cancel = false) {
+    verifyBtn.disabled = !enable;
+    playBtn.disabled = !enable;
+    changeDirBtn.disabled = !enable;
+    configSetupBtn.disabled = !enable;
+    loginServerSel.disabled = !enable;
+    loginServerConfirm.disabled = !enable;
+    helpBtn.disabled = !enable;
+    ramSel.disabled = !enable;
+    fpsSel.disabled = !enable;
+    zoomSel.disabled = !enable;
+    skillPlanner.disabled = !enable;
 
-function enableAll() {
-    verifyBtn.disabled = false;
-    playBtn.disabled = false;
-    changeDirBtn.disabled = false;
-    configSetupBtn.disabled = false;
-    swgOptionsBtn.disabled = false;
-    cancelBtn.disabled = true;
-    loginServerSel.disabled = false;
-    loginServerConfirm.disabled = false;
-    helpBtn.disabled = false;
-    skillPlanner.disabled = false;
+    
+    if (!enable && cancel) cancelBtn.disabled = true;
+
+    //Only enable
+     // cancelBtn logic
+    if (enable) {
+        cancelBtn.disabled = true;
+    } else {
+        cancelBtn.disabled = !cancel;
+    }
 }
 
 /*
@@ -974,7 +976,7 @@ async function handleReconnect() {
         // Pause for 1 second
         await new Promise(resolve => setTimeout(resolve, 1000));
 
-        disableAll(true);
+        toggleAll(false, true);
         resetProgress();
         install.install(config.folder, config.folder, true);
     }
