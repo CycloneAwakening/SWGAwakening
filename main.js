@@ -5,6 +5,7 @@ const { autoUpdater } = require('electron-updater');
 const path = require('path');
 const url = require('url');
 const fs = require('fs');
+const lockfile = require('proper-lockfile');
 const isDev = require('electron-is-dev');
 const discordRPC = require('discord-rpc');
 const discordRPCConfig = require('./json/discordrpc');
@@ -141,6 +142,184 @@ ipcMain.on('open-directory-dialog', async (event, response) => {
         event.sender.send(response, result.filePaths[0]);
     }
     log.info('Selected Directory Path', result.filePaths[0]);
+});
+
+//Originally had this in the renderer, proved unreliable to have it there so offloaded it to main
+async function modifyCfg(cfgPath, changes, isRemoveRequest) {
+    if (!fs.existsSync(cfgPath)) {
+        console.error(`[MODIFY CFG] File not found: ${cfgPath}`);
+        return;
+    }
+
+    let release;
+    try {
+        // Acquire lock
+        release = await lockfile.lock(cfgPath, {
+            retries: {
+                retries: 5,
+                factor: 2,
+                minTimeout: 1 * 1000,
+                maxTimeout: 2 * 1000,
+                randomize: false,
+            }
+        });
+
+        const content = fs.readFileSync(cfgPath, 'utf-8');
+        if (!content) {
+            console.error(`[MODIFY CFG] File is empty or unreadable: ${cfgPath}`);
+            return;
+        }
+
+        const lines = content.split(/\r?\n/);
+        const resultLines = [];
+
+        let currentSection = null;
+        let sectionStartIndex = -1;
+        let sectionEndIndex = -1;
+        const sectionFoundMap = new Set();
+        const handledKeys = {};
+
+        for (const section of Object.keys(changes)) {
+            handledKeys[section] = new Set();
+        }
+
+        for (let i = 0; i < lines.length; i++) {
+            const line = lines[i];
+            const trimmed = line.trim();
+
+            // Section header
+            if (trimmed.startsWith('[') && trimmed.endsWith(']')) {
+                // If we were in a section, record the end index
+                if (currentSection && sectionFoundMap.has(currentSection)) {
+                    sectionEndIndex = resultLines.length;
+                    // If add mode and any key was missing, insert it now
+                    if (!isRemoveRequest) {
+                        for (const [key, value] of Object.entries(changes[currentSection])) {
+                            if (!handledKeys[currentSection].has(key)) {
+                                console.log(`[MODIFY CFG] Section found but key (${key}) not present, adding to the end of section with value: ${value}`);
+                                resultLines.splice(resultLines.length - 1, 0, `\t${key}=${value}`);
+                                handledKeys[currentSection].add(key);
+                            }
+                        }
+                    }
+                }
+
+                currentSection = trimmed.slice(1, -1);
+                if (changes[currentSection]) {
+                    sectionFoundMap.add(currentSection);
+                    sectionStartIndex = resultLines.length;
+                }
+
+                resultLines.push(line);
+                continue;
+            }
+
+            if (currentSection && changes[currentSection]) {
+                let handledThisLine = false;
+
+                for (const key of Object.keys(changes[currentSection])) {
+                    if (trimmed.startsWith(`${key}=`)) {
+                        if (isRemoveRequest) {
+                            console.log(`[MODIFY CFG] Section found, key (${key}) present, removing key`);
+                            handledThisLine = true;
+                            handledKeys[currentSection].add(key);
+                            break;
+                        } else {
+                            const value = changes[currentSection][key];
+                            console.log(`[MODIFY CFG] Section found, key (${key}) present, updating value to: ${value}`);
+                            resultLines.push(`\t${key}=${value}`);
+                            handledThisLine = true;
+                            handledKeys[currentSection].add(key);
+                            break;
+                        }
+                    }
+                }
+
+                if (handledThisLine) continue;
+            }
+
+            resultLines.push(line);
+        }
+
+        // Handle sections that weren't found
+        for (const [section, keyValues] of Object.entries(changes)) {
+            if (!sectionFoundMap.has(section) && !isRemoveRequest) {
+                const [[firstKey, firstValue]] = Object.entries(keyValues);
+                console.log(`[MODIFY CFG] Section (${section}) not found, creating section with key (${firstKey}) and value: ${firstValue}`);
+                if (resultLines.length > 0 && resultLines[resultLines.length - 1].trim() !== '') {
+                    resultLines.push('');
+                }
+                resultLines.push(`[${section}]`);
+                for (const [key, value] of Object.entries(keyValues)) {
+                    resultLines.push(`\t${key}=${value}`);
+                }
+                resultLines.push('');
+            }
+        }
+
+        // Handle unhandled keys in found sections
+        for (const section of sectionFoundMap) {
+            const keys = changes[section];
+            for (const [key, value] of Object.entries(keys)) {
+                if (!handledKeys[section].has(key) && !isRemoveRequest) {
+                    console.log(`[MODIFY CFG] Section found but key (${key}) not present, adding to the end of section with value: ${value}`);
+                    // Find last index of this section
+                    const insertIndex = (() => {
+                        for (let j = resultLines.length - 1; j >= 0; j--) {
+                            if (resultLines[j].trim() === `[${section}]`) {
+                                for (let k = j + 1; k < resultLines.length; k++) {
+                                    if (resultLines[k].trim().startsWith('[')) return k;
+                                }
+                                return resultLines.length;
+                            }
+                        }
+                        return resultLines.length;
+                    })();
+                    resultLines.splice(insertIndex - 1, 0, `\t${key}=${value}`);
+                    handledKeys[section].add(key);
+                }
+            }
+        }
+
+        // Remove empty sections after key removals
+        for (const section of sectionFoundMap) {
+            const startIdx = resultLines.findIndex(line => line.trim() === `[${section}]`);
+            if (startIdx === -1) continue;
+
+            const endIdx = (() => {
+                for (let i = startIdx + 1; i < resultLines.length; i++) {
+                    if (resultLines[i].trim().startsWith('[')) return i;
+                }
+                return resultLines.length;
+            })();
+
+            const sectionBody = resultLines.slice(startIdx + 1, endIdx);
+            const isEmpty = sectionBody.every(line =>
+                line.trim() === '' || line.trim().startsWith('#')
+            );
+
+            if (isRemoveRequest && isEmpty) {
+                console.log(`[MODIFY CFG] Section [${section}] is now empty, removing it`);
+                resultLines.splice(startIdx, endIdx - startIdx);
+                if (resultLines[startIdx] && resultLines[startIdx].trim() === '') {
+                    resultLines.splice(startIdx, 1);
+                }
+            }
+        }
+
+        fs.writeFileSync(cfgPath, resultLines.join('\n'), 'utf-8');
+    } catch (err) {
+        console.error(`[MODIFY CFG] Error: ${err.message}`);
+    } finally {
+        // Release lock
+        if (release) {
+            await release();
+        }
+    }
+}
+
+ipcMain.handle('modify-cfg', async (event, cfgPath, changes, isRemove) => {
+  return await modifyCfg(cfgPath, changes, isRemove);
 });
 
 ipcMain.on('setup-game', function () {

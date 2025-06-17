@@ -79,19 +79,21 @@ if (fs.existsSync(configFile))
 gameDirBox.value = config.folder;
 var needSave = false;
 
+const optionsFile = path.join(config.folder, 'options.cfg');
+const loginFile = path.join(config.folder, 'login.cfg');
 /*
  * ---------------------
  *    Config Loading & Saving
  * ---------------------
  */
  
- function saveConfig() {
+function saveConfig() {
     fs.writeFileSync(configFile, JSON.stringify(config));
 }
  
 // Helper to set config defaults
 function setDefault(key, defaultValue) {
-    if (config[key] === undefined || config[key] === null || (key === 'fps' && config[key] === 144)) {
+    if (config[key] === undefined || config[key] === null) {
         config[key] = defaultValue;
         needSave = true;
     }
@@ -103,6 +105,25 @@ setDefault('fps', 60);
 setDefault('ram', 2048);
 setDefault('zoom', 1);
 setDefault('login', 'live');
+
+//Apply to cfg files
+(async () => {
+    await ipc.invoke('modify-cfg', loginFile, {
+		"ClientGame": {
+			"loginServerAddress0": server[config.login][0].address,
+			"loginServerPort0": server[config.login][0].port,
+			"freeChaseCameraMaximumZoom": config.zoom
+		}
+	}, false);
+})();
+
+(async () => {
+    ipc.invoke('modify-cfg', optionsFile, {
+		"Direct3d9": {
+			"fullscreenRefreshRate": config.fps
+		}
+	}, false);
+})();
 
 // Apply to UI
 enableSounds.checked = config.soundsEnabled;
@@ -432,7 +453,7 @@ playBtn.addEventListener('click', event => {
             buf = new Buffer(4);
             buf.writeFloatLE(config.fps);
             file.write(0x1156, buf, err => {
-                if (err) alert("Could not modify FPS. Close all instances of the game to update FPS.\n" + ex.toString());
+                if (err) alert(`Could not apply new FPS value (${config.fps} FPS). Close all instances of the game to update FPS. The requested SWG client instance will launch with old FPS value applied.`);
                 file.close(play);
             })
         } else {
@@ -482,7 +503,8 @@ ipc.on('setup-begin-install', function (event, args) {
 });
 
 function play() {
-    fs.writeFileSync(path.join(config.folder, "login.cfg"), `[ClientGame]\r\nloginServerAddress0=${server[config.login][0].address}\r\nloginServerPort0=${server[config.login][0].port}\r\nfreeChaseCameraMaximumZoom=${config.zoom}`);
+	//Keeping here just in case the new system proves unreliable - needs more testing as I had some mixed results while implementing it, want to make sure its bullet proof
+	//fs.writeFileSync(path.join(config.folder, "login.cfg"), `[ClientGame]\r\nloginServerAddress0=${server[config.login][0].address}\r\nloginServerPort0=${server[config.login][0].port}\r\nfreeChaseCameraMaximumZoom=${config.zoom}`);
     var args = ["--",
         "-s", "ClientGame", "loginServerAddress0=" + server[config.login][0].address, "loginServerPort0=" + server[config.login][0].port,
         "-s", "Station", "gameFeatures=34929",
@@ -608,14 +630,41 @@ newsUpdatesRefresh.addEventListener('click', function (e) {
  * -----------------
  */
 fpsSel.addEventListener('change', event => {
+	if(event.target.value > 60)
+		(async () => {
+			ipc.invoke('modify-cfg', optionsFile, {
+					"Direct3d9": {
+					"allowTearing": 1
+				}
+			}, false);
+		})();
+
+	(async () => {
+		ipc.invoke('modify-cfg', optionsFile, {
+			"Direct3d9": {
+				"fullscreenRefreshRate": event.target.value
+			}
+		}, false);
+	})();
+	
+
     config.fps = event.target.value;
     saveConfig();
+	alert(`The first time you launch the SWG client after changing your FPS value, it will take an extended time to open the client window due to needing to edit the executable directly. Please be patient.`);
 });
 ramSel.addEventListener('change', event => {
     config.ram = event.target.value;
     saveConfig();
 });
 zoomSel.addEventListener('change', event => {
+	(async () => {
+		ipc.invoke('modify-cfg', loginFile, {
+			"ClientGame": {
+				"freeChaseCameraMaximumZoom": event.target.value
+			}
+		}, false);
+	})();
+
     config.zoom = event.target.value;
     saveConfig();
 });
@@ -663,7 +712,17 @@ loginServerSel.addEventListener('change', event => {
 
 loginServerConfirm.addEventListener('click', function (event) {
     config.login = loginServerSel.value;
-    saveConfig();
+	saveConfig();
+	
+	(async () => {
+		ipc.invoke('modify-cfg', loginFile, {
+			"ClientGame": {
+				"loginServerAddress0": server[config.login][0].address,
+				"loginServerPort0": server[config.login][0].port,
+			}
+		}, false);
+	})();
+	
     loginServerSel.setAttribute("data-previous", config.login);
     activeServer.className = "no-opacity";
     setTimeout(function () { activeServer.className = "fade-in"; }, 1000);
