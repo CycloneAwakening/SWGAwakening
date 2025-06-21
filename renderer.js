@@ -277,10 +277,10 @@ async function getServerStatus(serverLogin) {
     }
 }
 
-async function getServerStatusRetry(serverLogin) {
+async function getServerStatusRetry(serverLogin, maxRetries = 5) {
     let retryFailed = true;
 
-    for (let i = 0; i < 5; i++) {
+    for (let i = 0; i < maxRetries; i++) {
 		const currentStatus = serverStatus.innerHTML.toLowerCase();
         if (currentStatus !== "unknown" && currentStatus !== "offline") {
             retryFailed = false;
@@ -495,7 +495,7 @@ ipc.on('setup-begin-install', function (event, args) {
     }
     if (args.swgdir !== '') {
         console.log('Copying over files.');
-        install.install(args.swgdir, config.folder); //Mark area for file copying - cfg errors potential
+        install.install(args.swgdir, config.folder);
     }
     else {
         install.install(config.folder, config.folder, true);

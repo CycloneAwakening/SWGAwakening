@@ -118,17 +118,50 @@ if (process.send) {
         fs.stat(src, (err, stats) => {
             if (err) { process.send('err: ' + err); return doDownload(); }
             if (stats.size != fileInfo.size && fileInfo.size != 0) { process.send("size mismatch actual: " + stats.size + ' expected: ' + fileInfo.size); return doDownload(); }
-            if (process.env.fullScan)
-                md5(src, hash => {
-                    if (hash != String(fileInfo.md5).toLowerCase() && fileInfo.md5 != 0) {
-                        process.send('md5 mismatch actual: ' + hash + ' expected: ' + String(fileInfo.md5).toLowerCase());
-                        progress(-fileInfo.size);
-                        return doDownload();
-                    }
-                    process.send('md5 matches ' + fileInfo.name);
-                    copyFile(src, dst, complete, progress);
-                }, progress);
-            else copyFile(src, dst, complete, progress);
+
+            /*
+             * This logic section forces restricted file extensions to be downloaded even if 
+             * copy would otherwise be requested. However, it doesn't force a download if the 
+             * file already exists in the destination directory - this should fix 
+             * our issue with ".cfg" and "miles" files coming across with invalid versions 
+             * whilst also not making them redownload every time the launcher checks file 
+             * validity.
+             */
+            const forceDownloadExtensionTypes = ['.cfg', '.iff', '.dat', '.exe', '.m3d', '.flt', '.asi', '.dll'];
+
+            const shouldForceDownload = forceDownloadExtensionTypes.some(ext => fileInfo.name.toLowerCase().endsWith(ext));
+
+            if (shouldForceDownload) {
+                if (!fs.existsSync(dst)) {
+                    process.send(`forcing download due to extension (file not already in destination): ${fileInfo.name}`);
+                    return doDownload();
+                } else {
+                    // File exists — verify MD5 for files with non-zero entries
+                    md5(dst, hash => {
+                        if (hash != String(fileInfo.md5).toLowerCase() && fileInfo.md5 != 0) {
+                            //File has md5 mismatch, download new one
+                            process.send('md5 mismatch on restricted extension file actual: ' + hash + ' expected: ' + String(fileInfo.md5).toLowerCase());
+                            return doDownload();
+                        } else {
+                            //File had matching md5, or had an md5 listing of 0 which indicates the file is allowed to be modified
+                            process.send(`md5 match for restricted extension file: ${fileInfo.name}`);
+                            return complete(); // No download needed - valid file already in destination
+                        }
+                    }, progress);
+                }
+            } else {
+                if (process.env.fullScan)
+                    md5(src, hash => {
+                        if (hash != String(fileInfo.md5).toLowerCase() && fileInfo.md5 != 0) {
+                            process.send('md5 mismatch actual: ' + hash + ' expected: ' + String(fileInfo.md5).toLowerCase());
+                            progress(-fileInfo.size);
+                            return doDownload();
+                        }
+                        process.send('md5 matches ' + fileInfo.name);
+                        copyFile(src, dst, complete, progress);
+                    }, progress);
+                else copyFile(src, dst, complete, progress);
+            }
         });
         function doDownload() {
             process.send('downloading ' + fileInfo.url + ' to ' + dst);
