@@ -86,11 +86,11 @@ const loginFile = path.join(config.folder, 'login.cfg');
  *    Config Loading & Saving
  * ---------------------
  */
- 
+
 function saveConfig() {
     fs.writeFileSync(configFile, JSON.stringify(config));
 }
- 
+
 // Helper to set config defaults
 function setDefault(key, defaultValue) {
     if (config[key] === undefined || config[key] === null) {
@@ -109,20 +109,20 @@ setDefault('login', 'live');
 //Apply to cfg files
 (async () => {
     await ipc.invoke('modify-cfg', loginFile, {
-		"ClientGame": {
-			"loginServerAddress0": server[config.login][0].address,
-			"loginServerPort0": server[config.login][0].port,
-			"freeChaseCameraMaximumZoom": config.zoom
-		}
-	}, false);
+        "ClientGame": {
+            "loginServerAddress0": server[config.login][0].address,
+            "loginServerPort0": server[config.login][0].port,
+            "freeChaseCameraMaximumZoom": config.zoom
+        }
+    }, false);
 })();
 
 (async () => {
     ipc.invoke('modify-cfg', optionsFile, {
-		"Direct3d9": {
-			"fullscreenRefreshRate": config.fps
-		}
-	}, false);
+        "Direct3d9": {
+            "fullscreenRefreshRate": config.fps
+        }
+    }, false);
 })();
 
 // Apply to UI
@@ -143,10 +143,10 @@ getServerStatus(config.login);
 
 function cleanOldConfig() {
     const removedKeys = [
-	'soundsrc',
-	'buttonclicksrc',
-	'buttonhoversrc'
-	];
+        'soundsrc',
+        'buttonclicksrc',
+        'buttonhoversrc'
+    ];
     let modified = false;
 
     removedKeys.forEach(key => {
@@ -239,41 +239,41 @@ enableSounds.addEventListener('click', () => {
  * ---------------------
  */
 async function getServerStatus(serverLogin) {
-	// Persistent state
+    // Persistent state
     if (getServerStatus.locked) {
-		console.log("[SERVER STATUS] Tried to start server status check, blocked due to lock.");
-		return;
-	}
+        console.log("[SERVER STATUS] Tried to start server status check, blocked due to lock.");
+        return;
+    }
     getServerStatus.locked = true;
-	console.log("[SERVER STATUS] Starting get server status attempt (lock).");
+    console.log("[SERVER STATUS] Starting get server status attempt (lock).");
 
     try {
         const body = await fetchWithTimeout(server[serverLogin][0].statusUrl, 5000);
         if (!validateBody(body)) {
             console.warn("[SERVER STATUS] Invalid body format. Retrying...");
-			updateServerDisplay(body);
-			await getServerStatusRetry(serverLogin);
+            updateServerDisplay(body);
+            await getServerStatusRetry(serverLogin);
             return;
         }
 
         updateServerDisplay(body);
 
-		const status = serverStatus.innerHTML.toLowerCase();
+        const status = serverStatus.innerHTML.toLowerCase();
         if (status === "unknown" || status === "offline") {
             await getServerStatusRetry(serverLogin);
         }
 
     } catch (err) {
         console.error(`[SERVER STATUS] Error fetching server status: ${err.message}`);
-		serverStatus.style.color = '#CC1100';
-		serverStatus.innerHTML = "Error";
-		serverUptime.innerHTML = "--D:--H:--M:--S";
+        serverStatus.style.color = '#CC1100';
+        serverStatus.innerHTML = "Error";
+        serverUptime.innerHTML = "--D:--H:--M:--S";
         donationText.innerHTML = `Error: Unable to retrieve data (Network Unreachable?)`;
-		donationBar.style.width = "0%";
-		await getServerStatusRetry(serverLogin);
+        donationBar.style.width = "0%";
+        await getServerStatusRetry(serverLogin);
     } finally {
         getServerStatus.locked = false;
-		console.log("[SERVER STATUS] Request complete (unlocked).");
+        console.log("[SERVER STATUS] Request complete (unlocked).");
     }
 }
 
@@ -281,7 +281,7 @@ async function getServerStatusRetry(serverLogin, maxRetries = 5) {
     let retryFailed = true;
 
     for (let i = 0; i < maxRetries; i++) {
-		const currentStatus = serverStatus.innerHTML.toLowerCase();
+        const currentStatus = serverStatus.innerHTML.toLowerCase();
         if (currentStatus !== "unknown" && currentStatus !== "offline") {
             retryFailed = false;
             break;
@@ -298,7 +298,7 @@ async function getServerStatusRetry(serverLogin, maxRetries = 5) {
 
             updateServerDisplay(body);
 
-			const status = serverStatus.innerHTML.toLowerCase();
+            const status = serverStatus.innerHTML.toLowerCase();
             if (status !== "unknown" && serverStatus.innerHTML !== "offline" && !status.includes("error") && !status.includes("invalid")) {
                 console.log(`[SERVER STATUS] Server produced a non-error or offline state during retry attempt ${i + 1}.`);
                 retryFailed = false;
@@ -306,7 +306,7 @@ async function getServerStatusRetry(serverLogin, maxRetries = 5) {
             }
         } catch (err) {
             console.warn(`[SERVER STATUS] Retry ${i + 1} failed: ${err.message}`);
-			
+
         }
 
         await new Promise(res => setTimeout(res, 2000 * Math.pow(1.5, i)));
@@ -359,14 +359,14 @@ function updateServerDisplay(body) {
         donationText.innerHTML = "Error: Invalid data received from server";
         donationBar.style.width = "0%";
     } else if (
-		goal !== last.donation_goal ||
-		received !== last.donations_received ||
-		donationText.innerHTML.toLowerCase().includes("error")
-	) {
+        goal !== last.donation_goal ||
+        received !== last.donations_received ||
+        donationText.innerHTML.toLowerCase().includes("error")
+    ) {
         const percentage = Math.trunc(received * 100 / goal);
         donationText.innerHTML = `Donation Statistics: $${received} received of the $${goal} goal (${percentage}%).`;
 
-		donationBar.style.width = `${Math.min(percentage, 100)}%`;
+        donationBar.style.width = `${Math.min(percentage, 100)}%`;
 
         last.donation_goal = goal;
         last.donations_received = received;
@@ -383,7 +383,7 @@ function validateBody(body) {
         return false;
     }
 
-     const isValid =
+    const isValid =
         typeof body.status === 'string' &&
         typeof body.uptime === 'string' &&
         typeof body.donation_goal === 'number' &&
@@ -503,8 +503,8 @@ ipc.on('setup-begin-install', function (event, args) {
 });
 
 function play() {
-	//Keeping here just in case the new system proves unreliable - needs more testing as I had some mixed results while implementing it, want to make sure its bullet proof
-	//fs.writeFileSync(path.join(config.folder, "login.cfg"), `[ClientGame]\r\nloginServerAddress0=${server[config.login][0].address}\r\nloginServerPort0=${server[config.login][0].port}\r\nfreeChaseCameraMaximumZoom=${config.zoom}`);
+    //Keeping here just in case the new system proves unreliable - needs more testing as I had some mixed results while implementing it, want to make sure its bullet proof
+    //fs.writeFileSync(path.join(config.folder, "login.cfg"), `[ClientGame]\r\nloginServerAddress0=${server[config.login][0].address}\r\nloginServerPort0=${server[config.login][0].port}\r\nfreeChaseCameraMaximumZoom=${config.zoom}`);
     var args = ["--",
         "-s", "ClientGame", "loginServerAddress0=" + server[config.login][0].address, "loginServerPort0=" + server[config.login][0].port,
         "-s", "Station", "gameFeatures=34929",
@@ -630,40 +630,40 @@ newsUpdatesRefresh.addEventListener('click', function (e) {
  * -----------------
  */
 fpsSel.addEventListener('change', event => {
-	if(event.target.value > 60)
-		(async () => {
-			ipc.invoke('modify-cfg', optionsFile, {
-					"Direct3d9": {
-					"allowTearing": 1
-				}
-			}, false);
-		})();
+    if (event.target.value > 60)
+        (async () => {
+            ipc.invoke('modify-cfg', optionsFile, {
+                "Direct3d9": {
+                    "allowTearing": 1
+                }
+            }, false);
+        })();
 
-	(async () => {
-		ipc.invoke('modify-cfg', optionsFile, {
-			"Direct3d9": {
-				"fullscreenRefreshRate": event.target.value
-			}
-		}, false);
-	})();
-	
+    (async () => {
+        ipc.invoke('modify-cfg', optionsFile, {
+            "Direct3d9": {
+                "fullscreenRefreshRate": event.target.value
+            }
+        }, false);
+    })();
+
 
     config.fps = event.target.value;
     saveConfig();
-	alert(`The first time you launch the SWG client after changing your FPS value, it will take an extended time to open the client window due to needing to edit the executable directly. Please be patient.`);
+    alert(`The first time you launch the SWG client after changing your FPS value, it will take an extended time to open the client window due to needing to edit the executable directly. Please be patient.`);
 });
 ramSel.addEventListener('change', event => {
     config.ram = event.target.value;
     saveConfig();
 });
 zoomSel.addEventListener('change', event => {
-	(async () => {
-		ipc.invoke('modify-cfg', loginFile, {
-			"ClientGame": {
-				"freeChaseCameraMaximumZoom": event.target.value
-			}
-		}, false);
-	})();
+    (async () => {
+        ipc.invoke('modify-cfg', loginFile, {
+            "ClientGame": {
+                "freeChaseCameraMaximumZoom": event.target.value
+            }
+        }, false);
+    })();
 
     config.zoom = event.target.value;
     saveConfig();
@@ -712,17 +712,17 @@ loginServerSel.addEventListener('change', event => {
 
 loginServerConfirm.addEventListener('click', function (event) {
     config.login = loginServerSel.value;
-	saveConfig();
-	
-	(async () => {
-		ipc.invoke('modify-cfg', loginFile, {
-			"ClientGame": {
-				"loginServerAddress0": server[config.login][0].address,
-				"loginServerPort0": server[config.login][0].port,
-			}
-		}, false);
-	})();
-	
+    saveConfig();
+
+    (async () => {
+        ipc.invoke('modify-cfg', loginFile, {
+            "ClientGame": {
+                "loginServerAddress0": server[config.login][0].address,
+                "loginServerPort0": server[config.login][0].port,
+            }
+        }, false);
+    })();
+
     loginServerSel.setAttribute("data-previous", config.login);
     activeServer.className = "no-opacity";
     setTimeout(function () { activeServer.className = "fade-in"; }, 1000);
@@ -814,7 +814,7 @@ cancelBtn.addEventListener('click', function (event) {
     progressBar.style.width = '100%';
     progressText.className = 'complete';
     toggleAll(true);
-	cancelledState = true;
+    cancelledState = true;
 })
 
 ipc.on('downloading-update', function (event, text) {
@@ -856,18 +856,18 @@ install.progress = function (completed, total) {
         lastTime = time;
     }
     if (progressText.className == 'complete') progressText.className = 'active';
-	if(navigator.onLine){
-		progressText.innerHTML = Math.trunc(completed * 100 / total) + '% (' + parseFloat(rate.toPrecision(3)) + units + ')';
-    progressBar.style.width = (completed * 100 / total) + '%';
-	} else {
-		progressText.innerHTML = "Network Error: File operation failed";
-		progressBar.style.width = '0%';
-		cancelledState = true;
-	}
+    if (navigator.onLine) {
+        progressText.innerHTML = Math.trunc(completed * 100 / total) + '% (' + parseFloat(rate.toPrecision(3)) + units + ')';
+        progressBar.style.width = (completed * 100 / total) + '%';
+    } else {
+        progressText.innerHTML = "Network Error: File operation failed";
+        progressBar.style.width = '0%';
+        cancelledState = true;
+    }
     if (completed == total && navigator.onLine) {
         toggleAll(true)
         progressText.className = 'complete';
-		cancelledState = false;
+        cancelledState = false;
     }
 }
 
@@ -887,7 +887,7 @@ if (fs.existsSync(path.join(config.folder, 'qt-mt305.dll'))) {
     toggleAll(false, true);
     resetProgress();
     install.install(config.folder, config.folder, true);
-	
+
 } else {
     console.log("First Run");
     progressText.innerHTML = "Click the SETUP button to get started."
@@ -920,11 +920,11 @@ function toggleAll(enable, cancel = false) {
     zoomSel.disabled = !enable;
     skillPlanner.disabled = !enable;
 
-    
+
     if (!enable && cancel) cancelBtn.disabled = true;
 
     //Only enable
-     // cancelBtn logic
+    // cancelBtn logic
     if (enable) {
         cancelBtn.disabled = true;
     } else {
@@ -946,16 +946,16 @@ function handleDisconnect() {
     console.warn("[NETWORK] Disconnected from internet.");
     isDisconnected = true;
 
-	if(cancelledState === true) {
-		cancelledState = false
-	}
-	
+    if (cancelledState === true) {
+        cancelledState = false
+    }
+
 }
 
-if(!navigator.onLine) {
-	progressText.innerHTML = "Network Error: File operation failed";
-	progressBar.style.width = '0%';
-	cancelledState = true;
+if (!navigator.onLine) {
+    progressText.innerHTML = "Network Error: File operation failed";
+    progressBar.style.width = '0%';
+    cancelledState = true;
 }
 
 async function handleReconnect() {

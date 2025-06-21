@@ -37,7 +37,7 @@ if (!fs.existsSync(logFile))
 
 log.transports.file.resolvePathFn = () => {
     return logFile;
-  }
+}
 autoUpdater.logger = log;
 autoUpdater.logger.transports.file.level = 'info';
 
@@ -73,8 +73,8 @@ function createWindow() {
         },
         icon: path.join(__dirname, 'img/launcher-icon.ico')
     });
-	
-	require('@electron/remote/main').enable(mainWindow.webContents);
+
+    require('@electron/remote/main').enable(mainWindow.webContents);
     mainWindow.loadURL(url.format({
         pathname: path.join(__dirname, 'index.html'),
         protocol: 'file:',
@@ -91,7 +91,7 @@ function createWindow() {
    });
    feed.webContents.loadURL('https://swgawakening.com/launcher-home.php')
    */
-   
+
 
     //if (isDev) mainWindow.webContents.openDevTools();
     mainWindow.once('ready-to-show', () => mainWindow.show());
@@ -107,29 +107,29 @@ const rpc = new discordRPC.Client({ transport: 'ipc' });
 const startTimestamp = new Date();
 
 async function setActivity() {
-	if (!rpc || !mainWindow) {
-		return;
-	}
+    if (!rpc || !mainWindow) {
+        return;
+    }
 
-	rpc.setActivity({
-		details: discordRPCConfig.details,
-		state: discordRPCConfig.state,
-		startTimestamp,
-		largeImageKey: discordRPCConfig.largeImageKey,
-		largeImageText: discordRPCConfig.largeImageText,
-		smallImageKey: discordRPCConfig.smallImageKey,
-		smallImageText: discordRPCConfig.smallImageText,
-		instance: false,
-	});
+    rpc.setActivity({
+        details: discordRPCConfig.details,
+        state: discordRPCConfig.state,
+        startTimestamp,
+        largeImageKey: discordRPCConfig.largeImageKey,
+        largeImageText: discordRPCConfig.largeImageText,
+        smallImageKey: discordRPCConfig.smallImageKey,
+        smallImageText: discordRPCConfig.smallImageText,
+        instance: false,
+    });
 }
-  
-rpc.on('ready', () => {
-	setActivity();
 
-	//activity can only be set every 15 seconds
-	setInterval(() => {
-		setActivity();
-	}, 15e3);
+rpc.on('ready', () => {
+    setActivity();
+
+    //activity can only be set every 15 seconds
+    setInterval(() => {
+        setActivity();
+    }, 15e3);
 });
 
 rpc.login({ clientId }).catch(console.error);
@@ -319,7 +319,7 @@ async function modifyCfg(cfgPath, changes, isRemoveRequest) {
 }
 
 ipcMain.handle('modify-cfg', async (event, cfgPath, changes, isRemove) => {
-  return await modifyCfg(cfgPath, changes, isRemove);
+    return await modifyCfg(cfgPath, changes, isRemove);
 });
 
 ipcMain.on('setup-game', function () {
@@ -352,8 +352,8 @@ function setupGame() {
             },
             icon: path.join(__dirname, 'img/installer-icon.ico')
         });
-		
-		require('@electron/remote/main').enable(setupWindow.webContents);
+
+        require('@electron/remote/main').enable(setupWindow.webContents);
         setupWindow.loadURL(url.format({
             pathname: path.join(__dirname, 'setup', 'index.html'),
             protocol: 'file:',
