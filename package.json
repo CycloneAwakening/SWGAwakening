@@ -29,7 +29,7 @@
     "author": "SWG Awakening",
     "license": "CC0-1.0",
     "devDependencies": {
-        "electron": "^36.5.0",
+        "electron": "^35.2.1",
         "electron-builder": "^26.0.12"
     },
     "dependencies": {

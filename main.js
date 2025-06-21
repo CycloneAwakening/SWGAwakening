@@ -63,7 +63,9 @@ function createWindow() {
         transparent: true,
         show: false,
         autoHideMenuBar: true,
+        titleBarStyle: 'hidden',
         frame: false,
+        roundedCorners: false,
         webPreferences: {
             disableBlinkFeatures: "Auxclick",
             nodeIntegration: true,
