@@ -1,5 +1,5 @@
 require("@electron/remote/main").initialize();
-const { app, BrowserView, BrowserWindow, ipcMain, dialog } = require('electron');
+const { app, WebContentsView, BrowserView, BrowserWindow, ipcMain, dialog } = require('electron');
 const log = require('electron-log');
 const { autoUpdater } = require('electron-updater');
 const path = require('path');
@@ -35,7 +35,7 @@ var logFile = swgaDir + '/awakening-launcher-log.txt';
 if (!fs.existsSync(logFile))
     fs.writeFileSync(logFile, "- Awakening Launcher Log File -\n");
 
-log.transports.file.resolvePath = () => {
+log.transports.file.resolvePathFn = () => {
     return logFile;
   }
 autoUpdater.logger = log;
@@ -80,7 +80,7 @@ function createWindow() {
         protocol: 'file:',
         slashes: true
     }));
-    /* FOR FUTURE USE IF ELECTRON FORCES USE OF BROWSERVIEW
+    /* FOR FUTURE USE IF ELECTRON FORCES USE OF BROWSERVIEW - THIS IS NOW DEPRECATED USE WEBCONTENTSVIEW
     const feed = new BrowserView()
     mainWindow.setBrowserView(feed)
     feed.setBounds({ 
