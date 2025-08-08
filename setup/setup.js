@@ -1,6 +1,5 @@
 const ipc = require('electron').ipcRenderer;
 const shell = require('electron').shell;
-const remote = require('@electron/remote');
 const fs = require('fs');
 const process = require('child_process');
 const cleanup = require('../json/cleanup');
@@ -17,12 +16,14 @@ const swgFolderBox = document.getElementById('swgFolder'); // SWG Awakening Fold
 
 const cancelBtn = document.getElementById('cancel');
 
-const minBtn = document.getElementById('minimize');
+//const minBtn = document.getElementById('minimize');
 const closeBtn = document.getElementById('close');
 
 const setupPrev = document.getElementById('setupPrev');
 const setupNext = document.getElementById('setupNext');
 const setupCancel = document.getElementById('setupCancel');
+
+const rulesRegView = document.getElementById('rulesRegView');
 
 const agreeRules = document.getElementById('agreeRules');
 const agreeOwner = document.getElementById('agreeOwner');
@@ -36,19 +37,37 @@ const agreeCleanUp = document.getElementById('agreeCleanUp');
 const cleanUpCount = document.getElementById('cleanUpCount');
 const cleanUpSize = document.getElementById('cleanUpSize');
 
-const configFile = require('os').homedir() + '/Documents/My Games/SWG - Awakening/SWG-Awakening-Launcher-config.json';
-var config = { folder: 'C:\\SWGAwakening' };
-if (fs.existsSync(configFile))
-    config = JSON.parse(fs.readFileSync(configFile));
-folderBox.value = config.folder;
 
-fileCleanUp();
 
-minBtn.addEventListener('click', event => remote.getCurrentWindow().minimize());
-closeBtn.addEventListener('click', event => remote.getCurrentWindow().close());
+// Use Electron's userData directory for the launcher data store
+
+let config = { folder: 'C:\\SWGAwakening' };
+async function loadConfig() {
+    config = await ipc.invoke('get-launcher-config');
+}
+async function saveConfig() {
+    await ipc.invoke('set-launcher-config', config);
+}
+
+// On startup, load config and initialize UI
+let configReady = loadConfig().then(() => {
+    folderBox.value = config.folder;
+    fileCleanUp();
+});
+
+rulesRegView.addEventListener('will-navigate', function (e) {
+    const protocol = require('url').parse(e.url).protocol;
+    if (protocol === 'http:' || protocol === 'https:')
+        shell.openExternal(e.url);
+    rulesRegView.stop();
+});
+
+
+//minBtn.addEventListener('click', event => ipc.send('window-minimize'));
+closeBtn.addEventListener('click', event => ipc.send('window-close'));
 
 setupCancel.addEventListener('click', function (event) {
-    remote.getCurrentWindow().close();
+    ipc.send('window-close');
 });
 
 agreeRules.addEventListener('click', function (event) {
@@ -112,7 +131,7 @@ function changeActiveScreen(button) {
                 console.log(agreeCleanUp.value);
                 args = { "swgdir": swgFolder.value, "cleanup": agreeCleanUp.checked };
                 ipc.send('setup-complete', args);
-                remote.getCurrentWindow().close();
+                ipc.send('window-close');
             } else {
                 setupNext.innerHTML = "Next";
                 setupNext.className = "swga-button swga-btn-icon swga-btn-icon-right";
@@ -124,7 +143,7 @@ function changeActiveScreen(button) {
             }
             break;
         default:
-            remote.getCurrentWindow().close();
+            ipc.send('window-close');
     }
 }
 
@@ -176,15 +195,19 @@ browseBtn.addEventListener('click', function (event) {
     ipc.send('open-directory-dialog', 'selected-directory');
 });
 
-folderBox.addEventListener('keyup', event => {
+
+folderBox.addEventListener('keyup', async event => {
+    await loadConfig();
     config.folder = event.target.value;
-    saveConfig();
+    await saveConfig();
 });
 
-ipc.on('selected-directory', function (event, path) {
+
+ipc.on('selected-directory', async function (event, path) {
     folderBox.value = path;
+    await loadConfig();
     config.folder = path;
-    saveConfig();
+    await saveConfig();
     fileCleanUp();
 });
 
@@ -206,7 +229,3 @@ ipc.on('install-selected', function (event, dir) {
         swgInstallMessageSuccess.style.display = 'none';
     }
 });
-
-function saveConfig() {
-    fs.writeFileSync(configFile, JSON.stringify(config));
-}

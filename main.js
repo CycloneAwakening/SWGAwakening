@@ -1,4 +1,3 @@
-require("@electron/remote/main").initialize();
 const { app, WebContentsView, BrowserView, BrowserWindow, ipcMain, dialog } = require('electron');
 const log = require('electron-log');
 const { autoUpdater } = require('electron-updater');
@@ -15,25 +14,173 @@ const clientId = discordRPCConfig.clientid;
 var setupWindow = null;
 var err;
 
-var documentsDir = require('os').homedir() + '/Documents';
-var myGamesDir = documentsDir + '/My Games';
-var swgaDir = myGamesDir + '/SWG - Awakening';
+/*
+ * Our application is not Windows code signed, so we need to use the userData directory for the launcher data store rather than the old "Documents/My Games/SWG - Awakening" path
+ * This allows us to avoid issues with permissions and file access (Controlled Folder Access) on Windows systems.
+ * Use Electron's userData directory for the launcher data store
+ */
+const launcherDataStoreDir = app.getPath('userData');
+console.log('[LAUNCHER STORE] Directory:', launcherDataStoreDir);
+
+if (!fs.existsSync(launcherDataStoreDir)) {
+    fs.mkdirSync(launcherDataStoreDir, { recursive: true });
+}
+
+// Old data store location for migration
+const homeDir = require('os').homedir();
+const documentsDir = 'Documents';
+const myGamesDir = 'My Games';
+const swgaDir = 'SWG - Awakening';
+const oldLauncherStoreDir = path.join(homeDir, documentsDir, myGamesDir, swgaDir);
+
+// Migrate data from old location if it exists and new location does not have a config file (indicator that migration has already happened)
+// This ensures we don't overwrite existing data in the new location
+if (fs.existsSync(oldLauncherStoreDir) && !fs.existsSync(path.join(launcherDataStoreDir, 'awakening-launcher-config.json'))) {
+    const copyFolderRecursiveSync = (source, target) => {
+        if (!fs.existsSync(target)) fs.mkdirSync(target, { recursive: true });
+        if (fs.existsSync(source)) {
+            fs.readdirSync(source).forEach(file => {
+                const srcPath = path.join(source, file);
+                const tgtPath = path.join(target, file);
+                try {
+                    if (fs.lstatSync(srcPath).isDirectory()) {
+                        copyFolderRecursiveSync(srcPath, tgtPath);
+                    } else {
+                        if (!fs.existsSync(tgtPath)) {
+                            fs.copyFileSync(srcPath, tgtPath);
+                            console.log(`[LAUNCHER STORE] Copied file: ${srcPath} -> ${tgtPath}`);
+                        } else {
+                            console.log(`[LAUNCHER STORE] Skipped existing file: ${tgtPath}`);
+                        }
+                    }
+                } catch (err) {
+                    console.error(`[LAUNCHER STORE] Error copying ${srcPath} to ${tgtPath}: ${err.message}`);
+                }
+            });
+        }
+    };
+    try {
+        copyFolderRecursiveSync(oldLauncherStoreDir, launcherDataStoreDir);
+        console.log(`[LAUNCHER STORE] Migrated data from old store: ${oldLauncherStoreDir} to new store: ${launcherDataStoreDir}`);
+    } catch (err) {
+        console.error(`[LAUNCHER STORE] Error migrating data: ${err.message}`);
+    }
+
+    const deleteFolderRecursiveSync = (dirPath) => {
+        if (fs.existsSync(dirPath)) {
+            fs.readdirSync(dirPath).forEach((file) => {
+                const curPath = path.join(dirPath, file);
+                try {
+                    if (fs.lstatSync(curPath).isDirectory()) {
+                        deleteFolderRecursiveSync(curPath);
+                    } else {
+                        fs.unlinkSync(curPath);
+                    }
+                } catch (err) {
+                    // Log and skip if unable to delete a file/folder
+                    console.warn(`[LAUNCHER STORE] Unable to delete ${curPath}: ${err.message}`);
+                }
+            });
+            try {
+                fs.rmdirSync(dirPath);
+            } catch (err) {
+                // Log and skip if unable to remove directory
+                console.warn(`[LAUNCHER STORE] Unable to remove directory ${dirPath}: ${err.message}`);
+            }
+        }
+    };
+    try {
+        // Attempt to clean up old data store - may fail if access is restricted (CFA)
+        deleteFolderRecursiveSync(oldLauncherStoreDir);
+        console.log(`[LAUNCHER STORE] Cleaned up old data store: ${oldLauncherStoreDir}`);
+    } catch (err) {
+        console.error(`[LAUNCHER STORE] Error cleaning up old data store: ${err.message}`);
+    }
+}
+
+//Change config naming conventions
+const oldConfigFile = path.join(launcherDataStoreDir, 'SWG-Awakening-Launcher-config.json');
+
+const configFile = path.join(launcherDataStoreDir, 'awakening-launcher-config.json');
+
+
+// Global config object, always kept in sync with disk
+let config = { folder: 'C:\\SWGAwakening' };
+function loadConfigFromDisk() {
+    if (fs.existsSync(configFile)) {
+        try {
+            config = JSON.parse(fs.readFileSync(configFile));
+        } catch (e) {
+            console.error('[LAUNCHER CONFIG] Failed to load config from disk:', e);
+        }
+    }
+}
+loadConfigFromDisk();
+console.info(`[LAUNCHER CONFIG] Current config:\n ${JSON.stringify(config)}`);
+
+if (fs.existsSync(oldConfigFile)) {
+    try {
+        fs.copyFileSync(oldConfigFile, configFile);
+        fs.unlinkSync(oldConfigFile);
+    } catch (err) {
+        console.error('[LAUNCHER CONFIG] Error copying and cleaning up old config file:', err);
+    }
+}
 
 app.commandLine.appendSwitch("disable-http-cache");
 
-if (!fs.existsSync(documentsDir))
-    fs.mkdirSync(documentsDir);
-
-if (!fs.existsSync(myGamesDir))
-    fs.mkdirSync(myGamesDir);
-
-if (!fs.existsSync(swgaDir))
-    fs.mkdirSync(swgaDir);
-
-var logFile = swgaDir + '/awakening-launcher-log.txt';
-
+var logFile = path.join(launcherDataStoreDir, 'awakening-launcher-log.txt');
 if (!fs.existsSync(logFile))
-    fs.writeFileSync(logFile, "- Awakening Launcher Log File -\n");
+    fs.writeFileSync(logFile, "SWG Awakening Launcher Log File\n");
+
+
+// Patch console logging to also write to log file, trimming if too large
+const MAX_LOG_SIZE = 5 * 1024 * 1024; // 5 MB
+const TRIM_LOG_SIZE = 1 * 1024 * 1024; // 1 MB
+const appendToLogFile = (msg) => {
+    try {
+        // Check log file size
+        if (fs.existsSync(logFile)) {
+            const stats = fs.statSync(logFile);
+            if (stats.size > MAX_LOG_SIZE) {
+                // Read last TRIM_LOG_SIZE bytes
+                const fd = fs.openSync(logFile, 'r');
+                const buffer = Buffer.alloc(TRIM_LOG_SIZE);
+                let start = stats.size - TRIM_LOG_SIZE;
+                if (start < 0) start = 0;
+                fs.readSync(fd, buffer, 0, TRIM_LOG_SIZE, start);
+                fs.closeSync(fd);
+                let trimmed = buffer.toString();
+                // Ensure we start at the next full line (skip partial line)
+                const firstNewline = trimmed.indexOf('\n');
+                if (firstNewline !== -1) {
+                    trimmed = trimmed.slice(firstNewline + 1);
+                }
+                fs.writeFileSync(logFile, trimmed);
+            }
+        }
+        fs.appendFileSync(logFile, msg + '\n');
+    } catch (e) {
+        // If log file is not available, skip
+    }
+};
+
+// Patch console logging to also write to log file
+['log', 'warn', 'error'].forEach((level) => {
+    const orig = console[level];
+    console[level] = function (...args) {
+        const msg = args.map(a => (typeof a === 'string' ? a : JSON.stringify(a, null, 2))).join(' ');
+        appendToLogFile(`[${new Date().toISOString()}] [${level.toUpperCase()}] ${msg}`);
+        orig.apply(console, args);
+    };
+});
+
+// Allow renderer processes to log to the main log file
+ipcMain.handle('log-to-file', (event, { level = 'log', message }) => {
+    if (typeof message !== 'string') message = JSON.stringify(message, null, 2);
+    appendToLogFile(`[${new Date().toISOString()}] [${level.toUpperCase()}] ${message}`);
+    return true;
+});
 
 log.transports.file.resolvePathFn = () => {
     return logFile;
@@ -75,8 +222,6 @@ function createWindow() {
         },
         icon: path.join(__dirname, 'img/launcher-icon.ico')
     });
-
-    require('@electron/remote/main').enable(mainWindow.webContents);
     mainWindow.loadURL(url.format({
         pathname: path.join(__dirname, 'index.html'),
         protocol: 'file:',
@@ -99,6 +244,21 @@ function createWindow() {
     mainWindow.once('ready-to-show', () => mainWindow.show());
     mainWindow.once('closed', () => mainWindow = null);
 }
+
+ipcMain.on('window-minimize', (event) => {
+    const win = BrowserWindow.fromWebContents(event.sender);
+    if (win) win.minimize();
+});
+ipcMain.on('window-close', (event) => {
+    const win = BrowserWindow.fromWebContents(event.sender);
+    if (win) win.close();
+});
+ipcMain.on('window-toggle-devtools', (event) => {
+    const win = BrowserWindow.fromWebContents(event.sender);
+    if (win) win.webContents.toggleDevTools();
+});
+
+ipcMain.handle('get-user-data-path', () => app.getPath('userData'));
 
 app.on('ready', () => setTimeout(createWindow, 100)); // Linux / MacOS transparancy fix
 app.on('window-all-closed', () => app.quit());
@@ -146,7 +306,53 @@ ipcMain.on('open-directory-dialog', async (event, response) => {
     log.info('Selected Directory Path', result.filePaths[0]);
 });
 
-//Originally had this in the renderer, proved unreliable to have it there so offloaded it to main
+// IPC: Set config (update global and disk)
+async function setLauncherConfig(newConfig) {
+    let release;
+    try {
+        if (!fs.existsSync(launcherDataStoreDir)) {
+            fs.mkdirSync(launcherDataStoreDir, { recursive: true });
+        }
+        // Acquire lock if config file exists
+        if (fs.existsSync(configFile)) {
+            release = await lockfile.lock(configFile, {
+                retries: {
+                    retries: 5,
+                    factor: 2,
+                    minTimeout: 1 * 1000,
+                    maxTimeout: 2 * 1000,
+                    randomize: false,
+                }
+            });
+            console.info(`[LAUNCHER CONFIG] Saving config:\n ${JSON.stringify(newConfig)}`);
+            fs.writeFileSync(configFile, JSON.stringify(newConfig));
+            if (release) {
+                await release();
+            }
+        } else {
+            console.info(`[LAUNCHER CONFIG] Saving config:\n ${JSON.stringify(newConfig)}`);
+            fs.writeFileSync(configFile, JSON.stringify(newConfig));
+        }
+        // Update global config
+        config = newConfig;
+    } catch (err) {
+        console.error(`[LAUNCHER CONFIG] Error: ${err.message}`);
+    }
+}
+
+// IPC: Set config (update global and disk)
+ipcMain.handle('set-launcher-config', async (event, newConfig) => {
+    await setLauncherConfig(newConfig);
+    return true;
+});
+
+// IPC: Get current config
+ipcMain.handle('get-launcher-config', async () => {
+    // Always reload from disk to ensure latest
+    loadConfigFromDisk();
+    return config;
+});
+
 async function modifyCfg(cfgPath, changes, isRemoveRequest) {
     if (!fs.existsSync(cfgPath)) {
         console.error(`[MODIFY CFG] File not found: ${cfgPath}`);
@@ -331,7 +537,9 @@ ipcMain.on('setup-game', function () {
 function setupGame() {
     if (setupWindow == null) {
         setupWindow = new BrowserWindow({
-            width: 775,
+            parent: mainWindow,
+            modal: true,
+            width: 774,
             height: 600,
             useContentSize: true,
             center: true,
@@ -339,12 +547,16 @@ function setupGame() {
             fullscreen: false,
             fullscreenable: false,
             maximizable: false,
-            maxWidth: 810,
-            maxHeight: 610,
+            minWidth: 774,
+            minHeight: 600,
+            maxWidth: 774,
+            maxHeight: 600,
             transparent: true,
             show: false,
-            frame: false,
             autoHideMenuBar: true,
+            titleBarStyle: 'hidden',
+            frame: false,
+            roundedCorners: false,
             webPreferences: {
                 disableBlinkFeatures: "Auxclick",
                 nodeIntegration: true,
@@ -354,8 +566,6 @@ function setupGame() {
             },
             icon: path.join(__dirname, 'img/installer-icon.ico')
         });
-
-        require('@electron/remote/main').enable(setupWindow.webContents);
         setupWindow.loadURL(url.format({
             pathname: path.join(__dirname, 'setup', 'index.html'),
             protocol: 'file:',
