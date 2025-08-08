@@ -1,11 +1,7 @@
-const ipc = require('electron').ipcRenderer;
-const shell = require('electron').shell;
-const remote = require('@electron/remote');
-const fs = require('fs');
-const process = require('child_process');
-const cleanup = require('../json/cleanup');
-const install = require('../install');
-const path = require('path');
+const { ipcRenderer: ipc, shell } = window.electron;
+import cleanup from '../json/cleanup.json' with { type: 'json' };
+import * as install from '../install.mjs';
+import os from 'os';
 
 const sidebarLinks = document.getElementById('sidebarLinks');
 const rulesAgree = document.getElementById('ToSReadOnline');
@@ -36,26 +32,23 @@ const agreeCleanUp = document.getElementById('agreeCleanUp');
 const cleanUpCount = document.getElementById('cleanUpCount');
 const cleanUpSize = document.getElementById('cleanUpSize');
 
-const configFile = require('os').homedir() + '/Documents/My Games/SWG - Awakening/SWG-Awakening-Launcher-config.json';
-var config = { folder: 'C:\\SWGAwakening' };
-if (fs.existsSync(configFile))
-    config = JSON.parse(fs.readFileSync(configFile));
+const configFile = os.homedir() + '/Documents/My Games/SWG - Awakening/SWG-Awakening-Launcher-config.json';
+let config = { folder: 'C:\\SWGAwakening' };
+if (window.electronAPI.existsSync(configFile))
+    config = JSON.parse(window.electronAPI.readFileSync(configFile));
 folderBox.value = config.folder;
 
 fileCleanUp();
 
-minBtn.addEventListener('click', event => remote.getCurrentWindow().minimize());
-closeBtn.addEventListener('click', event => remote.getCurrentWindow().close());
+minBtn.addEventListener('click', event => window.electronAPI.minimize());
+closeBtn.addEventListener('click', event => window.electronAPI.close());
 
 setupCancel.addEventListener('click', function (event) {
-    remote.getCurrentWindow().close();
+    window.electronAPI.close();
 });
 
 agreeRules.addEventListener('click', function (event) {
-    if (agreeRules.checked)
-        setupNext.disabled = false;
-    else
-        setupNext.disabled = true;
+    setupNext.disabled = !agreeRules.checked;
 });
 
 agreeOwner.addEventListener('click', function (event) {
@@ -79,84 +72,81 @@ setupPrev.addEventListener('click', function (event) {
 });
 
 function changeActiveScreen(button) {
-    var i, screens, activeScreen, args = {};
-    screens = document.getElementsByClassName("setup-tab");
+    let i, screens, activeScreen, args = {};
+    screens = document.getElementsByClassName('setup-tab');
     for (i = 0; i < screens.length; i++) {
-        if (screens[i].classList.contains("active"))
+        if (screens[i].classList.contains('active'))
             activeScreen = screens[i];
-        screens[i].className = screens[i].className.replace(" active", "");
+        screens[i].className = screens[i].className.replace(' active', '');
     }
     switch (activeScreen.id) {
-        case "rulesAgree":
+        case 'rulesAgree':
             if (navButtonNext(button.id)) {
-                document.getElementById("installDir").classList.add("active");
+                document.getElementById('installDir').classList.add('active');
                 setupPrev.style.display = 'block';
             }
             break;
-        case "installDir":
+        case 'installDir':
             if (navButtonNext(button.id)) {
-                document.getElementById("swgInstall").classList.add("active");
+                document.getElementById('swgInstall').classList.add('active');
                 setupNext.disabled = true;
-                setupNext.innerHTML = "Finish";
-                setupNext.className = "swga-button swga-btn-icon swga-btn-icon-right setup-next-finish";
+                setupNext.innerHTML = 'Finish';
+                setupNext.className = 'swga-button swga-btn-icon swga-btn-icon-right setup-next-finish';
             } else {
-                document.getElementById("rulesAgree").classList.add("active");
+                document.getElementById('rulesAgree').classList.add('active');
                 agreeRules.checked = false;
                 agreeOwner.checked = false;
                 setupNext.disabled = true;
                 setupPrev.style.display = 'none';
             }
             break;
-        case "swgInstall":
+        case 'swgInstall':
             if (navButtonNext(button.id)) {
                 console.log(agreeCleanUp.value);
-                args = { "swgdir": swgFolder.value, "cleanup": agreeCleanUp.checked };
+                args = { swgdir: swgFolder.value, cleanup: agreeCleanUp.checked };
                 ipc.send('setup-complete', args);
-                remote.getCurrentWindow().close();
+                window.electronAPI.close();
             } else {
-                setupNext.innerHTML = "Next";
-                setupNext.className = "swga-button swga-btn-icon swga-btn-icon-right";
+                setupNext.innerHTML = 'Next';
+                setupNext.className = 'swga-button swga-btn-icon swga-btn-icon-right';
                 agreeOwner.checked = false;
                 setupNext.disabled = false;
                 swgDirSection.style.visibility = 'hidden';
                 swgDirSection.style.opacity = '0';
-                document.getElementById("installDir").classList.add("active");
+                document.getElementById('installDir').classList.add('active');
             }
             break;
         default:
-            remote.getCurrentWindow().close();
+            window.electronAPI.close();
     }
 }
 
 function navButtonNext(button) {
-    if (button == "setupNext")
-        return true;
-    else
-        return false;
+    return button === 'setupNext';
 }
 
 function fileCleanUp() {
-    var cleanUpCountValue = 0;
-    var cleanUpSizeValue = 0;
+    let cleanUpCountValue = 0;
+    let cleanUpSizeValue = 0;
 
     for (let file of cleanup) {
-        if (fs.existsSync(path.join(config.folder, file.name))) {
+        if (window.electronAPI.existsSync(window.electronAPI.joinPath(config.folder, file.name))) {
             cleanUpCountValue += 1;
             cleanUpSizeValue += file.size;
-            console.log("Found: " + file.name);
+            console.log('Found: ' + file.name);
         }
     }
 
     if (cleanUpCountValue != 0) {
-        cleanUpFilesSection.style.display = 'none';//Change to 'block' and uncomment fileCleanUp() to make work
+        cleanUpFiles.style.display = 'none'; // Change to 'block' and uncomment fileCleanUp() to make work
         cleanUpCount.innerHTML = cleanUpCountValue;
-        var cleanUpSizeValueGB = (cleanUpSizeValue / Math.pow(1024, 3)).toFixed(2);
+        let cleanUpSizeValueGB = (cleanUpSizeValue / Math.pow(1024, 3)).toFixed(2);
         if (cleanUpSizeValueGB > 0.009)
-            cleanUpSize.innerHTML = cleanUpSizeValueGB + " GB";
+            cleanUpSize.innerHTML = cleanUpSizeValueGB + ' GB';
         else
-            cleanUpSize.innerHTML = (cleanUpSizeValue / Math.pow(1024, 2)).toFixed(2) + " MB";
+            cleanUpSize.innerHTML = (cleanUpSizeValue / Math.pow(1024, 2)).toFixed(2) + ' MB';
     } else {
-        cleanUpFilesSection.style.display = 'none';
+        cleanUpFiles.style.display = 'none';
     }
 }
 
@@ -167,10 +157,9 @@ rulesAgree.addEventListener('click', function (e) {
 
 sidebarLinks.addEventListener('click', function (e) {
     e.preventDefault();
-    if (e.target.classList.contains("sidebar-link"))
+    if (e.target.classList.contains('sidebar-link'))
         shell.openExternal(e.target.href);
 });
-
 
 browseBtn.addEventListener('click', function (event) {
     ipc.send('open-directory-dialog', 'selected-directory');
@@ -195,7 +184,7 @@ installBtn.addEventListener('click', function (event) {
 });
 
 ipc.on('install-selected', function (event, dir) {
-    if (fs.existsSync(path.join(dir, 'bottom.tre')) && fs.existsSync(path.join(dir, 'data_animation_00.tre')) && fs.existsSync(path.join(dir, 'data_texture_04.tre'))) {
+    if (window.electronAPI.existsSync(window.electronAPI.joinPath(dir, 'bottom.tre')) && window.electronAPI.existsSync(window.electronAPI.joinPath(dir, 'data_animation_00.tre')) && window.electronAPI.existsSync(window.electronAPI.joinPath(dir, 'data_texture_04.tre'))) {
         swgFolderBox.value = dir;
         swgInstallMessageSuccess.style.display = 'block';
         swgInstallMessageFail.style.display = 'none';
@@ -208,5 +197,5 @@ ipc.on('install-selected', function (event, dir) {
 });
 
 function saveConfig() {
-    fs.writeFileSync(configFile, JSON.stringify(config));
+    window.electronAPI.writeFileSync(configFile, JSON.stringify(config));
 }

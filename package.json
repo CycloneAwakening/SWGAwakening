@@ -3,11 +3,12 @@
     "productName": "SWG Awakening Launcher",
     "version": "1.3.0",
     "description": "This software package provides patching, config and launching functionality for the SWG client to connect to the Awakening game servers.",
-    "main": "main.js",
+    "type": "module",
+    "main": "main.mjs",
     "scripts": {
         "start": "electron .",
-        "build-win": "electron-builder --win --ia32 -p never",
-        "deploy-win": "electron-builder --win --ia32 -p always",
+        "deploy-win": "electron-builder --win --ia32 --x64 -p always",
+        "build-win": "electron-builder --win --ia32 --x64 -p never",
         "build-linux": "electron-builder --linux --x64",
         "build-mac": "electron-builder --mac --x64"
     },
@@ -29,7 +30,7 @@
     "author": "SWG Awakening",
     "license": "CC0-1.0",
     "devDependencies": {
-        "electron": "^35.2.1",
+        "electron": "^35.5.1",
         "electron-builder": "^26.0.12"
     },
     "dependencies": {

@@ -1,15 +1,10 @@
-const ipc = require('electron').ipcRenderer;
-const shell = require('electron').shell;
-const remote = require('@electron/remote');
-const fs = require('fs');
-const request = require('request');
-const process = require('child_process');
-const server = require('./json/server');
-const cleanup = require('./json/cleanup');
-const package = require('./package');
-const install = require('./install');
-const path = require('path');
-const os = require('os');
+const { ipcRenderer: ipc, shell } = window.electron;
+import server from './json/server.json' with { type: 'json' };
+import cleanup from './json/cleanup.json' with { type: 'json' };
+import pkg from './package.json' with { type: 'json' };
+import * as install from './install.mjs';
+
+export const installCallbacks = {};
 
 const playBtn = document.getElementById('play');
 
@@ -29,9 +24,9 @@ const swgOptionsBtn = document.getElementById('swgOptionsBtn');
 const gameConfigBtn = document.getElementById('gameConfigBtn');
 const gameConfigSection = document.getElementById('configSection');
 
-const configPromptOverlay = document.getElementById("configPromptOverlay");
-const configPromptClose = document.getElementById("configPromptClose");
-const closeConfigPrompt = document.getElementsByClassName("closeConfigPrompt");
+const configPromptOverlay = document.getElementById('configPromptOverlay');
+const configPromptClose = document.getElementById('configPromptClose');
+const closeConfigPrompt = document.getElementsByClassName('closeConfigPrompt');
 const gameDirBox = document.getElementById('gameDir');
 const helpLinks = document.getElementById('helpLinks');
 const setupComplete = document.getElementById('setupCompletePrompt');
@@ -47,7 +42,7 @@ const fpsSel = document.getElementById('fps');
 const zoomSel = document.getElementById('zoom');
 
 // External Links
-const headerLinks = document.getElementById("headerLinks");
+const headerLinks = document.getElementById('headerLinks');
 const mainButtonLinks = document.getElementById('mainButtonLinks');
 const newsUpdatesView = document.getElementById('newsUpdatesView');
 const newsUpdatesRefresh = document.getElementById('newsUpdatesRefresh');
@@ -59,36 +54,36 @@ const serverUptime = document.getElementById('serverUptime');
 const activeServer = document.getElementById('activeServer');
 const versionDiv = document.getElementById('version');
 
-const configFile = os.homedir() + '/Documents/My Games/SWG - Awakening/SWG-Awakening-Launcher-config.json';
-var config = { folder: 'C:\\SWGAwakening' };
+const configFile = window.electronAPI.osHomedir() + '/Documents/My Games/SWG - Awakening/SWG-Awakening-Launcher-config.json';
+let config = { folder: 'C:\\SWGAwakening' };
 
 // Constants for sound paths
-const OPEN_SOUND = "./sound/awakening.mp3";
-const BUTTON_CLICK_SOUND = "./sound/int_select.wav";
-const BUTTON_HOVER_SOUND = "./sound/ui_rollover.wav";
+const OPEN_SOUND = './sound/awakening.mp3';
+const BUTTON_CLICK_SOUND = './sound/int_select.wav';
+const BUTTON_HOVER_SOUND = './sound/ui_rollover.wav';
 
 // Elements for sounds
 const launchSound = document.getElementById('launcherSound');
 const buttonClickSound = document.getElementById('buttonClickSound');
 const buttonHoverSound = document.getElementById('buttonHoverSound');
-const wrapper = document.getElementById('launcher-wrapper'); //Used to apply events to every tag in launcher-wrap div
+const wrapper = document.getElementById('launcher-wrapper');
 const enableSounds = document.getElementById('enableSounds');
 
-if (fs.existsSync(configFile))
-    config = JSON.parse(fs.readFileSync(configFile));
+if (window.electronAPI.existsSync(configFile))
+    config = JSON.parse(window.electronAPI.readFileSync(configFile));
 gameDirBox.value = config.folder;
-var needSave = false;
+let needSave = false;
 
-const optionsFile = path.join(config.folder, 'options.cfg');
-const loginFile = path.join(config.folder, 'login.cfg');
+const optionsFile = window.electronAPI.joinPath(config.folder, 'options.cfg');
+const loginFile = window.electronAPI.joinPath(config.folder, 'login.cfg');
+
 /*
  * ---------------------
  *    Config Loading & Saving
  * ---------------------
  */
-
 function saveConfig() {
-    fs.writeFileSync(configFile, JSON.stringify(config));
+    window.electronAPI.writeFileSync(configFile, JSON.stringify(config));
 }
 
 // Helper to set config defaults
@@ -108,7 +103,7 @@ setDefault('login', 'live');
 
 //Apply to cfg files
 (async () => {
-    await ipc.invoke('modify-cfg', loginFile, {
+    await window.electron.ipcRenderer.invoke('modify-cfg', loginFile, {
         "ClientGame": {
             "loginServerAddress0": server[config.login][0].address,
             "loginServerPort0": server[config.login][0].port,
@@ -118,7 +113,7 @@ setDefault('login', 'live');
 })();
 
 (async () => {
-    ipc.invoke('modify-cfg', optionsFile, {
+    window.electron.ipcRenderer.invoke('modify-cfg', optionsFile, {
         "Direct3d9": {
             "fullscreenRefreshRate": config.fps
         }
@@ -131,13 +126,13 @@ fpsSel.value = config.fps;
 ramSel.value = config.ram;
 zoomSel.value = config.zoom;
 loginServerSel.value = config.login;
-loginServerSel.setAttribute("data-previous", config.login);
+loginServerSel.setAttribute('data-previous', config.login);
 
 // Save if needed
 if (needSave) saveConfig();
 
 // Update UI
-versionDiv.innerHTML = package.version;
+versionDiv.innerHTML = pkg.version;
 activeServer.innerHTML = server[config.login][0].address;
 getServerStatus(config.login);
 
@@ -158,7 +153,7 @@ function cleanOldConfig() {
 
     if (modified) {
         saveConfig();
-        console.log("[CONFIG CLEANER] Old config keys removed.");
+        console.log('[CONFIG CLEANER] Old config keys removed.');
     }
 }
 cleanOldConfig();
@@ -241,16 +236,15 @@ enableSounds.addEventListener('click', () => {
 async function getServerStatus(serverLogin) {
     // Persistent state
     if (getServerStatus.locked) {
-        console.log("[SERVER STATUS] Tried to start server status check, blocked due to lock.");
+        console.log('[SERVER STATUS] Tried to start server status check, blocked due to lock.');
         return;
     }
     getServerStatus.locked = true;
-    console.log("[SERVER STATUS] Starting get server status attempt (lock).");
-
+    console.log('[SERVER STATUS] Starting get server status attempt (lock).');
     try {
         const body = await fetchWithTimeout(server[serverLogin][0].statusUrl, 5000);
         if (!validateBody(body)) {
-            console.warn("[SERVER STATUS] Invalid body format. Retrying...");
+            console.warn('[SERVER STATUS] Invalid body format. Retrying...');
             updateServerDisplay(body);
             await getServerStatusRetry(serverLogin);
             return;
@@ -259,21 +253,21 @@ async function getServerStatus(serverLogin) {
         updateServerDisplay(body);
 
         const status = serverStatus.innerHTML.toLowerCase();
-        if (status === "unknown" || status === "offline") {
+        if (status === 'unknown' || status === 'offline') {
             await getServerStatusRetry(serverLogin);
         }
 
     } catch (err) {
         console.error(`[SERVER STATUS] Error fetching server status: ${err.message}`);
         serverStatus.style.color = '#CC1100';
-        serverStatus.innerHTML = "Error";
-        serverUptime.innerHTML = "--D:--H:--M:--S";
+        serverStatus.innerHTML = 'Error';
+        serverUptime.innerHTML = '--D:--H:--M:--S';
         donationText.innerHTML = `Error: Unable to retrieve data (Network Unreachable?)`;
-        donationBar.style.width = "0%";
+        donationBar.style.width = '0%';
         await getServerStatusRetry(serverLogin);
     } finally {
         getServerStatus.locked = false;
-        console.log("[SERVER STATUS] Request complete (unlocked).");
+        console.log('[SERVER STATUS] Request complete (unlocked).');
     }
 }
 
@@ -282,7 +276,7 @@ async function getServerStatusRetry(serverLogin, maxRetries = 5) {
 
     for (let i = 0; i < maxRetries; i++) {
         const currentStatus = serverStatus.innerHTML.toLowerCase();
-        if (currentStatus !== "unknown" && currentStatus !== "offline") {
+        if (currentStatus !== 'unknown' && currentStatus !== 'offline') {
             retryFailed = false;
             break;
         }
@@ -299,21 +293,20 @@ async function getServerStatusRetry(serverLogin, maxRetries = 5) {
             updateServerDisplay(body);
 
             const status = serverStatus.innerHTML.toLowerCase();
-            if (status !== "unknown" && serverStatus.innerHTML !== "offline" && !status.includes("error") && !status.includes("invalid")) {
+            if (status !== 'unknown' && serverStatus.innerHTML !== 'offline' && !status.includes('error') && !status.includes('invalid')) {
                 console.log(`[SERVER STATUS] Server produced a non-error or offline state during retry attempt ${i + 1}.`);
                 retryFailed = false;
                 break;
             }
         } catch (err) {
             console.warn(`[SERVER STATUS] Retry ${i + 1} failed: ${err.message}`);
-
         }
 
         await new Promise(res => setTimeout(res, 2000 * Math.pow(1.5, i)));
     }
 
     if (retryFailed) {
-        console.log("[SERVER STATUS] All retry attempts failed. Displaying failure message.");
+        console.log('[SERVER STATUS] All retry attempts failed. Displaying failure message.');
     }
 }
 
@@ -326,16 +319,16 @@ function updateServerDisplay(body) {
     const last = updateServerDisplay.lastBody;
     let updated = false;
 
-    if (body.status !== last.status || serverStatus.innerHTML.toLowerCase().includes("error")) {
+    if (body.status !== last.status || serverStatus.innerHTML.toLowerCase().includes('error')) {
         serverStatus.innerHTML = body.status;
         switch (body.status) {
-            case "Online":
+            case 'Online':
                 serverStatus.style.color = 'green';
                 break;
-            case "Loading":
+            case 'Loading':
                 serverStatus.style.color = 'yellow';
                 break;
-            case "Locked":
+            case 'Locked':
                 serverStatus.style.color = '#FF7722';
                 break;
             default:
@@ -356,12 +349,12 @@ function updateServerDisplay(body) {
     const received = body.donations_received;
 
     if (goal === undefined || received === undefined) {
-        donationText.innerHTML = "Error: Invalid data received from server";
-        donationBar.style.width = "0%";
+        donationText.innerHTML = 'Error: Invalid data received from server';
+        donationBar.style.width = '0%';
     } else if (
         goal !== last.donation_goal ||
         received !== last.donations_received ||
-        donationText.innerHTML.toLowerCase().includes("error")
+        donationText.innerHTML.toLowerCase().includes('error')
     ) {
         const percentage = Math.trunc(received * 100 / goal);
         donationText.innerHTML = `Donation Statistics: $${received} received of the $${goal} goal (${percentage}%).`;
@@ -374,7 +367,7 @@ function updateServerDisplay(body) {
     }
 
     if (updated) {
-        console.log(`[SERVER STATUS] UI updated.`);
+        console.log('[SERVER STATUS] UI updated.');
     }
 }
 
@@ -390,12 +383,11 @@ function validateBody(body) {
         typeof body.donations_received === 'number';
 
     if (!isValid) {
-        body.status = "Invalid";
-        body.uptime = "--D:--H:--M:--S";
+        body.status = 'Invalid';
+        body.uptime = '--D:--H:--M:--S';
         body.donation_goal = undefined;
         body.donations_received = undefined;
     }
-
     return isValid;
 }
 
@@ -430,8 +422,8 @@ serverStatLoop();
  *    Window Buttons
  * ---------------------
  */
-minBtn.addEventListener('click', event => remote.getCurrentWindow().minimize());
-closeBtn.addEventListener('click', event => remote.getCurrentWindow().close());
+minBtn.addEventListener('click', event => window.electronAPI.minimize());
+closeBtn.addEventListener('click', event => window.electronAPI.close());
 
 /*
  * ---------------------
@@ -440,53 +432,55 @@ closeBtn.addEventListener('click', event => remote.getCurrentWindow().close());
  */
 playBtn.addEventListener('click', event => {
     if (playBtn.disabled) return;
-    if (playBtn.classList.contains("game-setup")) {
+    if (playBtn.classList.contains('game-setup')) {
         ipc.send('setup-game');
     } else {
-        var fd = fs.openSync(path.join(config.folder, "SWGEmu.exe"), "r");
-        var buf = new Buffer(7);
-        var bytes = fs.readSync(fd, buf, 0, 7, 0x1153);
-        fs.closeSync(fd);
+        let fd = window.electronAPI.openSync(window.electronAPI.joinPath(config.folder, 'SWGEmu.exe'), 'r');
+        let buf = Buffer.alloc(7);
+        let bytes = window.electronAPI.readSync(fd, buf, 0, 7, 0x1153);
+        window.electronAPI.closeSync(fd);
         fd = null;
         if (bytes == 7 && buf.readUInt8(0) == 0xc7 && buf.readUInt8(1) == 0x45 && buf.readUInt8(2) == 0x94 && buf.readFloatLE(3) != config.fps) {
-            var file = require('random-access-file')(path.join(config.folder, "SWGEmu.exe"));
-            buf = new Buffer(4);
-            buf.writeFloatLE(config.fps);
-            file.write(0x1156, buf, err => {
-                if (err) alert(`Could not apply new FPS value (${config.fps} FPS). Close all instances of the game to update FPS. The requested SWG client instance will launch with old FPS value applied.`);
-                file.close(play);
-            })
+            import('random-access-file').then(({ default: RAF }) => {
+                let file = RAF(window.electronAPI.joinPath(config.folder, 'SWGEmu.exe'));
+                let buf4 = Buffer.alloc(4);
+                buf4.writeFloatLE(config.fps);
+                file.write(0x1156, buf4, err => {
+                    if (err) alert(`Could not apply new FPS value (${config.fps} FPS). Close all instances of the game to update FPS. The requested SWG client instance will launch with old FPS value applied.`);
+                    file.close(play);
+                });
+            });
         } else {
             play();
         }
     }
 });
 
-ipc.on('setup-begin-install', function (event, args) {
-    playBtn.innerHTML = "Play";
-    playBtn.className = "button";
+window.electron.ipcRenderer.on('setup-begin-install', function (event, args) {
+    playBtn.innerHTML = 'Play';
+    playBtn.className = 'button';
     swgOptionsBtn.disabled = false;
     toggleAll(false);
     helpBtn.disabled = false;
     // Welcome message
-    configPromptClose.setAttribute("data-prompt-attr", "setupCompletePrompt");
-    configPromptClose.setAttribute("data-prompt-value", "setupCompletePrompt");
-    configOverlayPrompt("setupCompletePrompt");
+    configPromptClose.setAttribute('data-prompt-attr', 'setupCompletePrompt');
+    configPromptClose.setAttribute('data-prompt-value', 'setupCompletePrompt');
+    configOverlayPrompt('setupCompletePrompt');
     gameConfigSection.style.display = 'block';
-    gameConfigBtn.className = "option-button swga-button swga-btn-icon swga-btn-icon-left active";
+    gameConfigBtn.className = 'option-button swga-button swga-btn-icon swga-btn-icon-left active';
     resetProgress();
-    if (fs.existsSync(configFile)) {
-        config = JSON.parse(fs.readFileSync(configFile));
+    if (window.electronAPI.existsSync(configFile)) {
+        config = JSON.parse(window.electronAPI.readFileSync(configFile));
         gameDirBox.value = config.folder;
     }
     // Cleanup
     if (args.cleanup == true) {
-        var cleanUpFile;
+        let cleanUpFile;
         for (let file of cleanup) {
-            if (fs.existsSync(cleanUpFile = path.join(config.folder, file.name))) {
-                fs.unlink(cleanUpFile, (err) => {
+            if (window.electronAPI.existsSync(cleanUpFile = window.electronAPI.joinPath(config.folder, file.name))) {
+                window.electronAPI.unlink(cleanUpFile, (err) => {
                     if (err) {
-                        console.log("Could not Delete: " + file.name);
+                        console.log('Could not Delete: ' + file.name);
                         return;
                     }
                 });
@@ -496,27 +490,26 @@ ipc.on('setup-begin-install', function (event, args) {
     if (args.swgdir !== '') {
         console.log('Copying over files.');
         install.install(args.swgdir, config.folder);
-    }
-    else {
+    } else {
         install.install(config.folder, config.folder, true);
     }
 });
 
 function play() {
     //Keeping here just in case the new system proves unreliable - needs more testing as I had some mixed results while implementing it, want to make sure its bullet proof
-    //fs.writeFileSync(path.join(config.folder, "login.cfg"), `[ClientGame]\r\nloginServerAddress0=${server[config.login][0].address}\r\nloginServerPort0=${server[config.login][0].port}\r\nfreeChaseCameraMaximumZoom=${config.zoom}`);
-    var args = ["--",
-        "-s", "ClientGame", "loginServerAddress0=" + server[config.login][0].address, "loginServerPort0=" + server[config.login][0].port,
-        "-s", "Station", "gameFeatures=34929",
-        "-s", "SwgClient", "allowMultipleInstances=true"];
-    var env = Object.create(require('process').env);
+    //window.electronAPI.writeFileSync(path.join(config.folder, "login.cfg"), `[ClientGame]\r\nloginServerAddress0=${server[config.login][0].address}\r\nloginServerPort0=${server[config.login][0].port}\r\nfreeChaseCameraMaximumZoom=${config.zoom}`);
+    let args = [
+        '--',
+        '-s', 'ClientGame', 'loginServerAddress0=' + server[config.login][0].address, 'loginServerPort0=' + server[config.login][0].port,
+        '-s', 'Station', 'gameFeatures=34929',
+        '-s', 'SwgClient', 'allowMultipleInstances=true'
+    ];
+    let env = { ...process.env };
     env.SWGCLIENT_MEMORY_SIZE_MB = config.ram;
-    if (os.platform() === 'win32') {
-        const child = process.spawn("SWGEmu.exe", args, { cwd: config.folder, env: env, detached: true, stdio: 'ignore' });
-        child.unref();
+    if (window.electronAPI.osPlatform() === 'win32') {
+        window.electronAPI.spawnProcess('SWGEmu.exe', args, { cwd: config.folder, env: env, detached: true, stdio: 'ignore' });
     } else {
-        const child = process.exec('wine SWGEmu.exe', { cwd: config.folder, env: env, detached: true, stdio: 'ignore' }, function (error, stdout, stderr) { });
-        child.unref();
+        window.electronAPI.execProcess('wine SWGEmu.exe', { cwd: config.folder, env: env, detached: true, stdio: 'ignore' });
     }
 }
 
@@ -526,12 +519,10 @@ function play() {
  * ---------------------
  */
 skillPlanner.addEventListener('click', event => {
-    if (os.platform() === 'win32') {
-        const child = process.spawn("cmd", ["/c", path.join(config.folder, "KSWGProfCalcEditor.exe")], { cwd: config.folder, detached: true, stdio: 'ignore' });
-        child.unref();
+    if (window.electronAPI.osPlatform() === 'win32') {
+        window.electronAPI.spawnProcess('cmd', ['/c', window.electronAPI.joinPath(config.folder, 'KSWGProfCalcEditor.exe')], { cwd: config.folder, detached: true, stdio: 'ignore' });
     } else {
-        const child = process.exec('wine KSWGProfCalcEditor.exe', { cwd: config.folder, detached: true, stdio: 'ignore' }, function (error, stdout, stderr) { });
-        child.unref();
+        window.electronAPI.execProcess('wine KSWGProfCalcEditor.exe', { cwd: config.folder, detached: true, stdio: 'ignore' });
     }
 });
 
@@ -541,12 +532,10 @@ skillPlanner.addEventListener('click', event => {
  * ---------------------
  */
 swgOptionsBtn.addEventListener('click', event => {
-    if (os.platform() === 'win32') {
-        const child = process.spawn("cmd", ["/c", path.join(config.folder, "SWGEmu_Setup.exe")], { cwd: config.folder, detached: true, stdio: 'ignore' });
-        child.unref();
+    if (window.electronAPI.osPlatform() === 'win32') {
+        window.electronAPI.spawnProcess('cmd', ['/c', window.electronAPI.joinPath(config.folder, 'SWGEmu_Setup.exe')], { cwd: config.folder, detached: true, stdio: 'ignore' });
     } else {
-        const child = process.exec('wine SWGEmu_Setup.exe', { cwd: config.folder, detached: true, stdio: 'ignore' }, function (error, stdout, stderr) { });
-        child.unref();
+        window.electronAPI.execProcess('wine SWGEmu_Setup.exe', { cwd: config.folder, detached: true, stdio: 'ignore' });
     }
 });
 
@@ -556,13 +545,13 @@ swgOptionsBtn.addEventListener('click', event => {
  * ---------------------
  */
 gameConfigBtn.addEventListener('click', event => {
-    if (gameConfigSection.style.display == 'none' || gameConfigBtn.className == "option-button swga-button swga-btn-icon swga-btn-icon-left") {
+    if (gameConfigSection.style.display == 'none' || gameConfigBtn.className == 'option-button swga-button swga-btn-icon swga-btn-icon-left') {
         configOverlayClose(true);
         gameConfigSection.style.display = 'block';
-        gameConfigBtn.className = "option-button swga-button swga-btn-icon swga-btn-icon-left active";
+        gameConfigBtn.className = 'option-button swga-button swga-btn-icon swga-btn-icon-left active';
     } else {
         gameConfigSection.style.display = 'none';
-        gameConfigBtn.className = "option-button swga-button swga-btn-icon swga-btn-icon-left";
+        gameConfigBtn.className = 'option-button swga-button swga-btn-icon swga-btn-icon-left';
         configOverlayClose(true);
     }
 });
@@ -574,25 +563,25 @@ gameConfigBtn.addEventListener('click', event => {
  */
 headerLinks.addEventListener('click', function (e) {
     e.preventDefault();
-    if (e.target.classList.contains("header-link"))
+    if (e.target.classList.contains('header-link'))
         shell.openExternal(e.target.href);
 });
 
 headerLinks.addEventListener('auxclick', function (e) {
     e.preventDefault();
-    if (e.target.classList.contains("header-link"))
+    if (e.target.classList.contains('header-link'))
         shell.openExternal(e.target.href);
 });
 
 mainButtonLinks.addEventListener('click', function (e) {
     e.preventDefault();
-    if (e.target.classList.contains("button-link"))
+    if (e.target.classList.contains('button-link'))
         shell.openExternal(e.target.href);
 });
 
 mainButtonLinks.addEventListener('auxclick', function (e) {
     e.preventDefault();
-    if (e.target.classList.contains("button-link"))
+    if (e.target.classList.contains('button-link'))
         shell.openExternal(e.target.href);
 });
 
@@ -602,7 +591,8 @@ mainButtonLinks.addEventListener('auxclick', function (e) {
  * ---------------------
  */
 newsUpdatesView.addEventListener('will-navigate', function (e) {
-    const protocol = require('url').parse(e.url).protocol;
+    const urlObj = new URL(e.url);
+    const protocol = urlObj.protocol;
     if (protocol === 'http:' || protocol === 'https:')
         shell.openExternal(e.url);
     newsUpdatesView.stop();
@@ -632,25 +622,23 @@ newsUpdatesRefresh.addEventListener('click', function (e) {
 fpsSel.addEventListener('change', event => {
     if (event.target.value > 60)
         (async () => {
-            ipc.invoke('modify-cfg', optionsFile, {
-                "Direct3d9": {
-                    "allowTearing": 1
+            window.electron.ipcRenderer.invoke('modify-cfg', optionsFile, {
+                'Direct3d9': {
+                    'allowTearing': 1
                 }
             }, false);
         })();
-
     (async () => {
-        ipc.invoke('modify-cfg', optionsFile, {
-            "Direct3d9": {
-                "fullscreenRefreshRate": event.target.value
+        window.electron.ipcRenderer.invoke('modify-cfg', optionsFile, {
+            'Direct3d9': {
+                'fullscreenRefreshRate': event.target.value
             }
         }, false);
     })();
 
-
     config.fps = event.target.value;
     saveConfig();
-    alert(`The first time you launch the SWG client after changing your FPS value, it will take an extended time to open the client window due to needing to edit the executable directly. Please be patient.`);
+    alert('The first time you launch the SWG client after changing your FPS value, it will take an extended time to open the client window due to needing to edit the executable directly. Please be patient.');
 });
 ramSel.addEventListener('change', event => {
     config.ram = event.target.value;
@@ -658,9 +646,9 @@ ramSel.addEventListener('change', event => {
 });
 zoomSel.addEventListener('change', event => {
     (async () => {
-        ipc.invoke('modify-cfg', loginFile, {
-            "ClientGame": {
-                "freeChaseCameraMaximumZoom": event.target.value
+        window.electron.ipcRenderer.invoke('modify-cfg', loginFile, {
+            'ClientGame': {
+                'freeChaseCameraMaximumZoom': event.target.value
             }
         }, false);
     })();
@@ -669,7 +657,7 @@ zoomSel.addEventListener('change', event => {
     saveConfig();
 });
 
-// "Change" directory button button pressed
+// "Change" directory button pressed
 changeDirBtn.addEventListener('click', function (event) {
     ipc.send('open-directory-dialog', 'selected-directory');
 });
@@ -680,9 +668,9 @@ gameDirBox.addEventListener('keyup', event => {
 });
 
 ipc.on('selected-directory', function (event, dir) {
-    configPromptClose.setAttribute("data-prompt-attr", "gameDir");
-    configPromptClose.setAttribute("data-prompt-value", gameDirBox.value);
-    if (fs.existsSync(path.join(dir, 'qt-mt305.dll'))) {
+    configPromptClose.setAttribute('data-prompt-attr', 'gameDir');
+    configPromptClose.setAttribute('data-prompt-value', gameDirBox.value);
+    if (window.electronAPI.existsSync(window.electronAPI.joinPath(dir, 'qt-mt305.dll'))) {
         gameDirBox.value = dir;
         config.folder = dir;
         saveConfig();
@@ -690,9 +678,9 @@ ipc.on('selected-directory', function (event, dir) {
         resetProgress();
         install.install(config.folder, config.folder, true);
     } else {
-        var gameDirPromptDir = document.getElementById('gameDirPromptDir');
+        let gameDirPromptDir = document.getElementById('gameDirPromptDir');
         gameDirPromptBox.value = dir;
-        configOverlayPrompt("gameDirPrompt");
+        configOverlayPrompt('gameDirPrompt');
         helpBtn.disabled = true;
     }
 });
@@ -704,9 +692,9 @@ configSetupBtn.addEventListener('click', function (event) {
 
 // Config "Login Server" select pressed
 loginServerSel.addEventListener('change', event => {
-    configPromptClose.setAttribute("data-prompt-attr", "loginServerSelect");
-    configPromptClose.setAttribute("data-prompt-value", loginServerSel.getAttribute("data-previous"));
-    configOverlayPrompt("loginServerPrompt");
+    configPromptClose.setAttribute('data-prompt-attr', 'loginServerSelect');
+    configPromptClose.setAttribute('data-prompt-value', loginServerSel.getAttribute('data-previous'));
+    configOverlayPrompt('loginServerPrompt');
     helpBtn.disabled = true;
 });
 
@@ -715,22 +703,22 @@ loginServerConfirm.addEventListener('click', function (event) {
     saveConfig();
 
     (async () => {
-        ipc.invoke('modify-cfg', loginFile, {
-            "ClientGame": {
-                "loginServerAddress0": server[config.login][0].address,
-                "loginServerPort0": server[config.login][0].port,
+        window.electron.ipcRenderer.invoke('modify-cfg', loginFile, {
+            'ClientGame': {
+                'loginServerAddress0': server[config.login][0].address,
+                'loginServerPort0': server[config.login][0].port,
             }
         }, false);
     })();
 
-    loginServerSel.setAttribute("data-previous", config.login);
-    activeServer.className = "no-opacity";
-    setTimeout(function () { activeServer.className = "fade-in"; }, 1000);
+    loginServerSel.setAttribute('data-previous', config.login);
+    activeServer.className = 'no-opacity';
+    setTimeout(function () { activeServer.className = 'fade-in'; }, 1000);
     activeServer.innerHTML = server[config.login][0].address;
-    serverStatus.className = "no-opacity";
-    setTimeout(function () { serverStatus.className = "fade-in"; }, 1000);
-    serverUptime.className = "no-opacity";
-    setTimeout(function () { serverUptime.className = "fade-in"; }, 1000);
+    serverStatus.className = 'no-opacity';
+    setTimeout(function () { serverStatus.className = 'fade-in'; }, 1000);
+    serverUptime.className = 'no-opacity';
+    setTimeout(function () { serverUptime.className = 'fade-in'; }, 1000);
     getServerStatus(config.login);
     toggleAll(false, true);
     resetProgress();
@@ -742,15 +730,15 @@ loginServerConfirm.addEventListener('click', function (event) {
 helpBtn.addEventListener('click', function (event) {
     if (gameConfigSection.style.display == 'none') {
         gameConfigSection.style.display = 'block';
-        gameConfigBtn.className = "option-button swga-button swga-btn-icon swga-btn-icon-left active";
-        configOverlayPrompt("helpInfoPrompt");
+        gameConfigBtn.className = 'option-button swga-button swga-btn-icon swga-btn-icon-left active';
+        configOverlayPrompt('helpInfoPrompt');
     } else {
-        if (document.getElementById("configPromptOverlay").style.display == "none") {
-            configOverlayPrompt("helpInfoPrompt");
+        if (document.getElementById('configPromptOverlay').style.display == 'none') {
+            configOverlayPrompt('helpInfoPrompt');
         } else {
-            if (document.getElementById("helpInfoPrompt").className == "config-prompt active") {
+            if (document.getElementById('helpInfoPrompt').className == 'config-prompt active') {
                 gameConfigSection.style.display = 'none';
-                gameConfigBtn.className = "option-button swga-button swga-btn-icon swga-btn-icon-left";
+                gameConfigBtn.className = 'option-button swga-button swga-btn-icon swga-btn-icon-left';
                 // Run exit task in case user opened help on top of already opened prompt
                 configOverlayClose(true);
             }
@@ -770,18 +758,18 @@ setupComplete.addEventListener('click', function (e) {
 });
 
 function configOverlayPrompt(promptID) {
-    var i, prompts;
-    configPromptOverlay.style.display = "block";
-    prompts = configPromptOverlay.getElementsByClassName("config-prompt");
+    let i, prompts;
+    configPromptOverlay.style.display = 'block';
+    prompts = configPromptOverlay.getElementsByClassName('config-prompt');
     for (i = 0; i < prompts.length; i++)
-        prompts[i].className = prompts[i].className.replace(" active", "");
-    document.getElementById(promptID).classList.add("active");
-    gameConfigBtn.className = "option-button swga-button swga-btn-icon swga-btn-icon-left";
+        prompts[i].className = prompts[i].className.replace(' active', '');
+    document.getElementById(promptID).classList.add('active');
+    gameConfigBtn.className = 'option-button swga-button swga-btn-icon swga-btn-icon-left';
 }
 
 // Close prompt button pressed
 Object.entries(closeConfigPrompt).map((object) => {
-    object[1].addEventListener("click", function () {
+    object[1].addEventListener('click', function () {
         configOverlayClose(true);
     });
 });
@@ -789,15 +777,15 @@ Object.entries(closeConfigPrompt).map((object) => {
 function configOverlayClose(exit) {
     // Performs exit process for set values
     if (exit == true) {
-        var promptAttr = configPromptClose.getAttribute("data-prompt-attr");
-        var promptVal = configPromptClose.getAttribute("data-prompt-value");
+        let promptAttr = configPromptClose.getAttribute('data-prompt-attr');
+        let promptVal = configPromptClose.getAttribute('data-prompt-value');
         if (promptAttr != '' && promptVal != '')
             document.getElementById(promptAttr).value = promptVal;
     }
-    gameConfigBtn.className = "option-button swga-button swga-btn-icon swga-btn-icon-left";
-    configPromptClose.setAttribute("data-prompt-attr", "");
-    configPromptClose.setAttribute("data-prompt-value", "");
-    configPromptOverlay.style.display = "none";
+    gameConfigBtn.className = 'option-button swga-button swga-btn-icon swga-btn-icon-left';
+    configPromptClose.setAttribute('data-prompt-attr', '');
+    configPromptClose.setAttribute('data-prompt-value', '');
+    configPromptOverlay.style.display = 'none';
     gameConfigSection.style.display = 'none';
     helpBtn.disabled = false;
 }
@@ -815,7 +803,7 @@ cancelBtn.addEventListener('click', function (event) {
     progressText.className = 'complete';
     toggleAll(true);
     cancelledState = true;
-})
+});
 
 ipc.on('downloading-update', function (event, text) {
     versionDiv.innerHTML = text;
@@ -824,12 +812,12 @@ ipc.on('downloading-update', function (event, text) {
 
 ipc.on('download-progress', function (event, info) {
     install.progress(info.transferred, info.total);
-})
+});
 
-var lastCompleted = 0;
-var lastTime = new Date();
-var rate = 0;
-var units = " B/s";
+let lastCompleted = 0;
+let lastTime = new Date();
+let rate = 0;
+let units = ' B/s';
 
 function resetProgress() {
     lastCompleted = 0;
@@ -837,20 +825,20 @@ function resetProgress() {
     rate = 0;
 }
 
-install.progress = function (completed, total) {
-    var time = new Date();
-    var elapsed = (time - lastTime) / 1000;
+installCallbacks.progress = function (completed, total) {
+    let time = new Date();
+    let elapsed = (time - lastTime) / 1000;
     if (elapsed >= 1) {
-        var bytes = completed - lastCompleted;
-        units = " B/s";
+        let bytes = completed - lastCompleted;
+        units = ' B/s';
         rate = bytes / elapsed;
         if (rate > 1024) {
             rate = rate / 1024;
-            units = " KB/s";
+            units = ' KB/s';
         }
         if (rate > 1024) {
             rate = rate / 1024;
-            units = " MB/s";
+            units = ' MB/s';
         }
         lastCompleted = completed;
         lastTime = time;
@@ -860,17 +848,16 @@ install.progress = function (completed, total) {
         progressText.innerHTML = Math.trunc(completed * 100 / total) + '% (' + parseFloat(rate.toPrecision(3)) + units + ')';
         progressBar.style.width = (completed * 100 / total) + '%';
     } else {
-        progressText.innerHTML = "Network Error: File operation failed";
+        progressText.innerHTML = 'Network Error: File operation failed';
         progressBar.style.width = '0%';
         cancelledState = true;
     }
     if (completed == total && navigator.onLine) {
-        toggleAll(true)
+        toggleAll(true);
         progressText.className = 'complete';
         cancelledState = false;
     }
-}
-
+};
 
 verifyBtn.addEventListener('click', function (event) {
     verifyFiles();
@@ -883,17 +870,16 @@ function verifyFiles() {
     install.install(config.folder, config.folder, true);
 }
 
-if (fs.existsSync(path.join(config.folder, 'qt-mt305.dll'))) {
+if (window.electronAPI.existsSync(window.electronAPI.joinPath(config.folder, 'qt-mt305.dll'))) {
     toggleAll(false, true);
     resetProgress();
     install.install(config.folder, config.folder, true);
-
 } else {
-    console.log("First Run");
-    progressText.innerHTML = "Click the SETUP button to get started."
-    playBtn.innerHTML = "Setup";
+    console.log('First Run');
+    progressText.innerHTML = 'Click the SETUP button to get started.';
+    playBtn.innerHTML = 'Setup';
     playBtn.disabled = false;
-    playBtn.className = "button game-setup";
+    playBtn.className = 'button game-setup';
     verifyBtn.disabled = true;
     changeDirBtn.disabled = true;
     configSetupBtn.disabled = true;
@@ -920,17 +906,17 @@ function toggleAll(enable, cancel = false) {
     zoomSel.disabled = !enable;
     skillPlanner.disabled = !enable;
 
-
     if (!enable && cancel) cancelBtn.disabled = true;
-
+   
     //Only enable
-    // cancelBtn logic
+    //cancelBtn logic
     if (enable) {
         cancelBtn.disabled = true;
     } else {
         cancelBtn.disabled = !cancel;
     }
 }
+
 
 /*
  * ---------------------
@@ -943,23 +929,22 @@ window.addEventListener('offline', handleDisconnect);
 let isDisconnected = false;
 
 function handleDisconnect() {
-    console.warn("[NETWORK] Disconnected from internet.");
+    console.warn('[NETWORK] Disconnected from internet.');
     isDisconnected = true;
 
     if (cancelledState === true) {
-        cancelledState = false
+        cancelledState = false;
     }
-
 }
 
 if (!navigator.onLine) {
-    progressText.innerHTML = "Network Error: File operation failed";
+    progressText.innerHTML = 'Network Error: File operation failed';
     progressBar.style.width = '0%';
     cancelledState = true;
 }
 
 async function handleReconnect() {
-    console.log("[NETWORK] Reconnected to internet.");
+    console.log('[NETWORK] Reconnected to internet.');
     isDisconnected = false;
 
     // window.location.reload(); // Full reload if necessary
@@ -975,7 +960,7 @@ async function handleReconnect() {
 
         // Pause for 1 second
         await new Promise(resolve => setTimeout(resolve, 1000));
-
+        
         toggleAll(false, true);
         resetProgress();
         install.install(config.folder, config.folder, true);
@@ -988,4 +973,4 @@ async function handleReconnect() {
  *    Launcher Debug
  * ---------------------
  */
-versionDiv.addEventListener('click', event => remote.getCurrentWindow().toggleDevTools()); //Launcher debugging tool button on the launcher version section
+versionDiv.addEventListener('click', event => window.electronAPI.toggleDevTools()); //Launcher debugging tool button on the launcher version section

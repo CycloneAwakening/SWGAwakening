@@ -1,50 +1,46 @@
-require("@electron/remote/main").initialize();
-const { app, WebContentsView, BrowserView, BrowserWindow, ipcMain, dialog } = require('electron');
-const log = require('electron-log');
-const { autoUpdater } = require('electron-updater');
-const path = require('path');
-const url = require('url');
-const fs = require('fs');
-const lockfile = require('proper-lockfile');
-const isDev = require('electron-is-dev');
-const discordRPC = require('discord-rpc');
-const discordRPCConfig = require('./json/discordrpc');
+import { app, WebContentsView, BrowserView, BrowserWindow, ipcMain, dialog } from 'electron';
+import log from 'electron-log';
+import updaterpkg from 'electron-updater';
+const { autoUpdater } = updaterpkg;
+import path from 'path';
+import url from 'url';
+import fs from 'fs';
+import lockfile from 'proper-lockfile';
+import isDev from 'electron-is-dev';
+import discordRPC from 'discord-rpc';
+import discordRPCConfig from './json/discordrpc.json' with { type: 'json' };
+import os from 'os';
+import { fileURLToPath } from 'url';
+import { spawn, exec, fork } from 'child_process';
 
 const clientId = discordRPCConfig.clientid;
 
-var setupWindow = null;
-var err;
+let setupWindow = null;
+let err;
 
-var documentsDir = require('os').homedir() + '/Documents';
-var myGamesDir = documentsDir + '/My Games';
-var swgaDir = myGamesDir + '/SWG - Awakening';
+const documentsDir = os.homedir() + '/Documents';
+const myGamesDir = documentsDir + '/My Games';
+const swgaDir = myGamesDir + '/SWG - Awakening';
 
-app.commandLine.appendSwitch("disable-http-cache");
+app.commandLine.appendSwitch('disable-http-cache');
 
-if (!fs.existsSync(documentsDir))
-    fs.mkdirSync(documentsDir);
+if (!fs.existsSync(documentsDir)) fs.mkdirSync(documentsDir);
+if (!fs.existsSync(myGamesDir)) fs.mkdirSync(myGamesDir);
+if (!fs.existsSync(swgaDir)) fs.mkdirSync(swgaDir);
 
-if (!fs.existsSync(myGamesDir))
-    fs.mkdirSync(myGamesDir);
+const logFile = swgaDir + '/awakening-launcher-log.txt';
+if (!fs.existsSync(logFile)) fs.writeFileSync(logFile, '- Awakening Launcher Log File -\n');
 
-if (!fs.existsSync(swgaDir))
-    fs.mkdirSync(swgaDir);
-
-var logFile = swgaDir + '/awakening-launcher-log.txt';
-
-if (!fs.existsSync(logFile))
-    fs.writeFileSync(logFile, "- Awakening Launcher Log File -\n");
-
-log.transports.file.resolvePathFn = () => {
-    return logFile;
-}
+log.transports.file.resolvePathFn = () => logFile;
 autoUpdater.logger = log;
 autoUpdater.logger.transports.file.level = 'info';
 
-if (err !== undefined)
-    log.info(err);
+if (err !== undefined) log.info(err);
 
 let mainWindow;
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 function createWindow() {
     mainWindow = new BrowserWindow({
@@ -67,16 +63,16 @@ function createWindow() {
         frame: false,
         roundedCorners: false,
         webPreferences: {
-            disableBlinkFeatures: "Auxclick",
-            nodeIntegration: true,
-            enableRemoteModule: true,
-            contextIsolation: false,
+            disableBlinkFeatures: 'Auxclick',
+            preload: path.join(__dirname, 'preload.mjs'),
+            contextIsolation: true,
+            nodeIntegration: false,
+            sandbox: false,
             webviewTag: true
         },
         icon: path.join(__dirname, 'img/launcher-icon.ico')
     });
-
-    require('@electron/remote/main').enable(mainWindow.webContents);
+    
     mainWindow.loadURL(url.format({
         pathname: path.join(__dirname, 'index.html'),
         protocol: 'file:',
@@ -100,7 +96,7 @@ function createWindow() {
     mainWindow.once('closed', () => mainWindow = null);
 }
 
-app.on('ready', () => setTimeout(createWindow, 100)); // Linux / MacOS transparancy fix
+app.on('ready', () => setTimeout(createWindow, 100)); // Linux / MacOS transparency fix
 app.on('window-all-closed', () => app.quit());
 
 discordRPC.register(clientId);
@@ -109,10 +105,7 @@ const rpc = new discordRPC.Client({ transport: 'ipc' });
 const startTimestamp = new Date();
 
 async function setActivity() {
-    if (!rpc || !mainWindow) {
-        return;
-    }
-
+    if (!rpc || !mainWindow) return;
     rpc.setActivity({
         details: discordRPCConfig.details,
         state: discordRPCConfig.state,
@@ -127,19 +120,14 @@ async function setActivity() {
 
 rpc.on('ready', () => {
     setActivity();
-
     //activity can only be set every 15 seconds
-    setInterval(() => {
-        setActivity();
-    }, 15e3);
+    setInterval(() => setActivity(), 15e3);
 });
 
 rpc.login({ clientId }).catch(console.error);
 
 ipcMain.on('open-directory-dialog', async (event, response) => {
-    const result = await dialog.showOpenDialog({
-        properties: ['openDirectory']
-    });
+    const result = await dialog.showOpenDialog({ properties: ['openDirectory'] });
     if (result.filePaths[0] != undefined) {
         event.sender.send(response, result.filePaths[0]);
     }
@@ -346,16 +334,16 @@ function setupGame() {
             frame: false,
             autoHideMenuBar: true,
             webPreferences: {
-                disableBlinkFeatures: "Auxclick",
-                nodeIntegration: true,
-                enableRemoteModule: true,
-                contextIsolation: false,
+                disableBlinkFeatures: 'Auxclick',
+                preload: path.join(__dirname, 'preload.mjs'),
+                contextIsolation: true,
+                nodeIntegration: false,
+                sandbox: false,
                 webviewTag: true
             },
             icon: path.join(__dirname, 'img/installer-icon.ico')
         });
 
-        require('@electron/remote/main').enable(setupWindow.webContents);
         setupWindow.loadURL(url.format({
             pathname: path.join(__dirname, 'setup', 'index.html'),
             protocol: 'file:',
@@ -374,6 +362,73 @@ ipcMain.on('setup-complete', (event, arg) => {
     mainWindow.webContents.send('setup-begin-install', arg);
 });
 
+ipcMain.on('window-minimize', (event) => {
+  const win = BrowserWindow.fromWebContents(event.sender);
+  if (win) win.minimize();
+});
+
+ipcMain.on('window-close', (event) => {
+  const win = BrowserWindow.fromWebContents(event.sender);
+  if (win) win.close();
+});
+
+ipcMain.on('window-toggle-devtools', (event) => {
+  const win = BrowserWindow.fromWebContents(event.sender);
+  if (win) win.webContents.toggleDevTools();
+});
+
+ipcMain.on('spawn-process', (event, { command, args, options }) => {
+  try {
+    const child = spawn(command, args, { ...options, detached: true, stdio: 'ignore' });
+    child.unref();
+    // event.reply('spawn-process-reply', { success: true });
+  } catch (err) {
+    // event.reply('spawn-process-reply', { success: false, error: err.message });
+  }
+});
+
+ipcMain.on('exec-process', (event, { command, options }) => {
+  try {
+    const child = exec(command, { ...options, detached: true, stdio: 'ignore' }, (error, stdout, stderr) => {});
+    child.unref();
+    // event.reply('exec-process-reply', { success: true });
+  } catch (err) {
+    // event.reply('exec-process-reply', { success: false, error: err.message });
+  }
+});
+
+const forks = new Map();
+let forkCounter = 0;
+
+ipcMain.on('fork-process', (event, { modulePath, options }) => {
+  const forkId = ++forkCounter;
+  const child = fork(modulePath, [], options);
+  forks.set(forkId, child);
+
+  child.on('message', (message) => {
+    event.sender.send('fork-message', { forkId, message });
+  });
+
+  child.on('exit', () => {
+    forks.delete(forkId);
+  });
+
+  // Optionally, send forkId back to renderer if needed
+  event.sender.send('fork-started', { forkId });
+});
+
+ipcMain.on('send-to-fork', (event, { forkId, message }) => {
+  const child = forks.get(forkId);
+  if (child) child.send(message);
+});
+
+ipcMain.on('kill-fork', (event, { forkId }) => {
+  const child = forks.get(forkId);
+  if (child) {
+    child.kill();
+    forks.delete(forkId);
+  }
+});
 
 autoUpdater.on('update-downloaded', (info) => {
     autoUpdater.quitAndInstall();
