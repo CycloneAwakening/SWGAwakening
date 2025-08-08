@@ -1,6 +1,5 @@
 const ipc = require('electron').ipcRenderer;
 const shell = require('electron').shell;
-const remote = require('@electron/remote');
 const fs = require('fs');
 const request = require('request');
 const process = require('child_process');
@@ -59,8 +58,33 @@ const serverUptime = document.getElementById('serverUptime');
 const activeServer = document.getElementById('activeServer');
 const versionDiv = document.getElementById('version');
 
-const configFile = os.homedir() + '/Documents/My Games/SWG - Awakening/SWG-Awakening-Launcher-config.json';
-var config = { folder: 'C:\\SWGAwakening' };
+// Use Electron's userData directory for the launcher data store
+
+let config = { folder: 'C:\\SWGAwakening' };
+// Always fetch config from main process
+async function loadConfig() {
+    config = await ipc.invoke('get-launcher-config');
+}
+
+// Save config via main process
+async function saveConfig() {
+    await ipc.invoke('set-launcher-config', config);
+}
+
+// On startup, load config and initialize UI
+let configReady = (async () => {
+    await loadConfig();
+    gameDirBox.value = config.folder;
+    enableSounds.checked = config.soundsEnabled;
+    fpsSel.value = config.fps;
+    ramSel.value = config.ram;
+    zoomSel.value = config.zoom;
+    loginServerSel.value = config.login;
+    loginServerSel.setAttribute("data-previous", config.login);
+    versionDiv.innerHTML = package.version;
+    activeServer.innerHTML = server[config.login][0].address;
+    await getServerStatus(config.login);
+})();
 
 // Constants for sound paths
 const OPEN_SOUND = "./sound/awakening.mp3";
@@ -74,94 +98,68 @@ const buttonHoverSound = document.getElementById('buttonHoverSound');
 const wrapper = document.getElementById('launcher-wrapper'); //Used to apply events to every tag in launcher-wrap div
 const enableSounds = document.getElementById('enableSounds');
 
-if (fs.existsSync(configFile))
-    config = JSON.parse(fs.readFileSync(configFile));
-gameDirBox.value = config.folder;
-var needSave = false;
-
-const optionsFile = path.join(config.folder, 'options.cfg');
-const loginFile = path.join(config.folder, 'login.cfg');
+function getOptionsFile() { return path.join(config.folder, 'options.cfg'); }
+function getLoginFile() { return path.join(config.folder, 'login.cfg'); }
 /*
  * ---------------------
  *    Config Loading & Saving
  * ---------------------
  */
+// Helper to set config defaults, always reloads config from disk first
 
-function saveConfig() {
-    fs.writeFileSync(configFile, JSON.stringify(config));
-}
-
-// Helper to set config defaults
-function setDefault(key, defaultValue) {
+async function setDefault(key, defaultValue) {
+    await loadConfig();
     if (config[key] === undefined || config[key] === null) {
+        console.error(`[CONFIG] Config key "${key}" not found, setting default value: ${defaultValue}`);
         config[key] = defaultValue;
-        needSave = true;
+        await saveConfig();
     }
 }
 
-// Set defaults
-setDefault('soundsEnabled', true);
-setDefault('fps', 60);
-setDefault('ram', 2048);
-setDefault('zoom', 1);
-setDefault('login', 'live');
 
-//Apply to cfg files
-(async () => {
-    await ipc.invoke('modify-cfg', loginFile, {
+// Set defaults (ensure config is loaded first)
+configReady.then(async () => {
+    await setDefault('soundsEnabled', true);
+    await setDefault('fps', 60);
+    await setDefault('ram', 2048);
+    await setDefault('zoom', 1);
+    await setDefault('login', 'live');
+
+    //Apply to cfg files
+    await ipc.invoke('modify-cfg', getLoginFile(), {
         "ClientGame": {
             "loginServerAddress0": server[config.login][0].address,
             "loginServerPort0": server[config.login][0].port,
             "freeChaseCameraMaximumZoom": config.zoom
         }
     }, false);
-})();
-
-(async () => {
-    ipc.invoke('modify-cfg', optionsFile, {
+    await ipc.invoke('modify-cfg', getOptionsFile(), {
         "Direct3d9": {
             "fullscreenRefreshRate": config.fps
         }
     }, false);
-})();
+});
 
-// Apply to UI
-enableSounds.checked = config.soundsEnabled;
-fpsSel.value = config.fps;
-ramSel.value = config.ram;
-zoomSel.value = config.zoom;
-loginServerSel.value = config.login;
-loginServerSel.setAttribute("data-previous", config.login);
-
-// Save if needed
-if (needSave) saveConfig();
-
-// Update UI
-versionDiv.innerHTML = package.version;
-activeServer.innerHTML = server[config.login][0].address;
-getServerStatus(config.login);
-
-function cleanOldConfig() {
+async function cleanOldConfig() {
+    await loadConfig();
     const removedKeys = [
         'soundsrc',
         'buttonclicksrc',
         'buttonhoversrc'
     ];
     let modified = false;
-
     removedKeys.forEach(key => {
         if (key in config) {
             delete config[key];
             modified = true;
         }
     });
-
     if (modified) {
-        saveConfig();
+        await saveConfig();
         console.log("[CONFIG CLEANER] Old config keys removed.");
     }
 }
-cleanOldConfig();
+configReady.then(cleanOldConfig);
 
 /*
  * ---------------------
@@ -181,9 +179,17 @@ function playSound(audioElement) {
     if (!config.soundsEnabled) return;
 
     try {
-        audioElement.pause();
+        // Only pause if not already paused
+        if (!audioElement.paused) {
+            audioElement.pause();
+        }
         audioElement.currentTime = 0;
-        audioElement.play();
+        // Use .play() and catch DOMException
+        audioElement.play().catch(err => {
+            if (err.name !== 'AbortError') {
+                console.warn(`[SOUND MANAGER] Sound play failed: ${err.message}`);
+            }
+        });
     } catch (err) {
         console.warn(`[SOUND MANAGER] Sound play failed: ${err.message}`);
     }
@@ -217,7 +223,6 @@ setupSoundListeners();
 // Autoplay launchSound if sounds enabled
 if (config.soundsEnabled) {
     try {
-        launchSound.pause(); // Reset state
         launchSound.currentTime = 0;
         launchSound.play().catch(err => {
             console.warn(`[SOUND MANAGER] Autoplay failed, likely needs user gesture: ${err.message}`);
@@ -230,7 +235,9 @@ if (config.soundsEnabled) {
 // Toggle sound setting
 enableSounds.addEventListener('click', () => {
     config.soundsEnabled = enableSounds.checked;
-    saveConfig();
+    (async () => {
+        ipc.invoke('set-launcher-config', config);
+    })();
 });
 
 /*
@@ -242,6 +249,15 @@ async function getServerStatus(serverLogin) {
     // Persistent state
     if (getServerStatus.locked) {
         console.log("[SERVER STATUS] Tried to start server status check, blocked due to lock.");
+        return;
+    }
+    if (!server[serverLogin] || !server[serverLogin][0] || !server[serverLogin][0].statusUrl) {
+        console.error(`[SERVER STATUS] Invalid serverLogin: ${serverLogin}`);
+        serverStatus.style.color = '#CC1100';
+        serverStatus.innerHTML = "Error";
+        serverUptime.innerHTML = "--D:--H:--M:--S";
+        donationText.innerHTML = `Error: Invalid server configuration`;
+        donationBar.style.width = "0%";
         return;
     }
     getServerStatus.locked = true;
@@ -278,6 +294,15 @@ async function getServerStatus(serverLogin) {
 }
 
 async function getServerStatusRetry(serverLogin, maxRetries = 5) {
+    if (!server[serverLogin] || !server[serverLogin][0] || !server[serverLogin][0].statusUrl) {
+        console.error(`[SERVER STATUS] Invalid serverLogin for retry: ${serverLogin}`);
+        serverStatus.style.color = '#CC1100';
+        serverStatus.innerHTML = "Error";
+        serverUptime.innerHTML = "--D:--H:--M:--S";
+        donationText.innerHTML = `Error: Invalid server configuration`;
+        donationBar.style.width = "0%";
+        return;
+    }
     let retryFailed = true;
 
     for (let i = 0; i < maxRetries; i++) {
@@ -417,21 +442,24 @@ async function fetchWithTimeout(url, timeoutMs) {
     }
 }
 
-serverStatus.addEventListener('click', event => getServerStatus(config.login));
+serverStatus.addEventListener('click', async event => {
+    await configReady;
+    await getServerStatus(config.login);
+});
 
-function serverStatLoop() {
-    getServerStatus(config.login);
+async function serverStatLoop() {
+    await getServerStatus(config.login);
     setTimeout(serverStatLoop, 60000);
 }
-serverStatLoop();
+configReady.then(serverStatLoop);
 
 /*
  * ---------------------
  *    Window Buttons
  * ---------------------
  */
-minBtn.addEventListener('click', event => remote.getCurrentWindow().minimize());
-closeBtn.addEventListener('click', event => remote.getCurrentWindow().close());
+minBtn.addEventListener('click', event => ipc.send('window-minimize'));
+closeBtn.addEventListener('click', event => ipc.send('window-close'));
 
 /*
  * ---------------------
@@ -444,13 +472,14 @@ playBtn.addEventListener('click', event => {
         ipc.send('setup-game');
     } else {
         var fd = fs.openSync(path.join(config.folder, "SWGEmu.exe"), "r");
-        var buf = new Buffer(7);
+        var buf = Buffer.alloc(7);
         var bytes = fs.readSync(fd, buf, 0, 7, 0x1153);
         fs.closeSync(fd);
         fd = null;
         if (bytes == 7 && buf.readUInt8(0) == 0xc7 && buf.readUInt8(1) == 0x45 && buf.readUInt8(2) == 0x94 && buf.readFloatLE(3) != config.fps) {
-            var file = require('random-access-file')(path.join(config.folder, "SWGEmu.exe"));
-            buf = new Buffer(4);
+            var randomAccessFile = require('random-access-file');
+            var file = new randomAccessFile(path.join(config.folder, "SWGEmu.exe"));
+            buf = Buffer.alloc(4);
             buf.writeFloatLE(config.fps);
             file.write(0x1156, buf, err => {
                 if (err) alert(`Could not apply new FPS value (${config.fps} FPS). Close all instances of the game to update FPS. The requested SWG client instance will launch with old FPS value applied.`);
@@ -462,7 +491,7 @@ playBtn.addEventListener('click', event => {
     }
 });
 
-ipc.on('setup-begin-install', function (event, args) {
+ipc.on('setup-begin-install', async function (event, args) {
     playBtn.innerHTML = "Play";
     playBtn.className = "button";
     swgOptionsBtn.disabled = false;
@@ -475,10 +504,9 @@ ipc.on('setup-begin-install', function (event, args) {
     gameConfigSection.style.display = 'block';
     gameConfigBtn.className = "option-button swga-button swga-btn-icon swga-btn-icon-left active";
     resetProgress();
-    if (fs.existsSync(configFile)) {
-        config = JSON.parse(fs.readFileSync(configFile));
-        gameDirBox.value = config.folder;
-    }
+    // Always reload config from main process
+    await loadConfig();
+    gameDirBox.value = config.folder;
     // Cleanup
     if (args.cleanup == true) {
         var cleanUpFile;
@@ -632,7 +660,7 @@ newsUpdatesRefresh.addEventListener('click', function (e) {
 fpsSel.addEventListener('change', event => {
     if (event.target.value > 60)
         (async () => {
-            ipc.invoke('modify-cfg', optionsFile, {
+            ipc.invoke('modify-cfg', getOptionsFile(), {
                 "Direct3d9": {
                     "allowTearing": 1
                 }
@@ -640,7 +668,7 @@ fpsSel.addEventListener('change', event => {
         })();
 
     (async () => {
-        ipc.invoke('modify-cfg', optionsFile, {
+    ipc.invoke('modify-cfg', getOptionsFile(), {
             "Direct3d9": {
                 "fullscreenRefreshRate": event.target.value
             }
@@ -649,16 +677,20 @@ fpsSel.addEventListener('change', event => {
 
 
     config.fps = event.target.value;
-    saveConfig();
+    (async () => {
+        ipc.invoke('set-launcher-config', config);
+    })();
     alert(`The first time you launch the SWG client after changing your FPS value, it will take an extended time to open the client window due to needing to edit the executable directly. Please be patient.`);
 });
 ramSel.addEventListener('change', event => {
     config.ram = event.target.value;
-    saveConfig();
+    (async () => {
+        ipc.invoke('set-launcher-config', config);
+    })();
 });
 zoomSel.addEventListener('change', event => {
     (async () => {
-        ipc.invoke('modify-cfg', loginFile, {
+    ipc.invoke('modify-cfg', getLoginFile(), {
             "ClientGame": {
                 "freeChaseCameraMaximumZoom": event.target.value
             }
@@ -666,7 +698,9 @@ zoomSel.addEventListener('change', event => {
     })();
 
     config.zoom = event.target.value;
-    saveConfig();
+    (async () => {
+        ipc.invoke('set-launcher-config', config);
+    })();
 });
 
 // "Change" directory button button pressed
@@ -676,7 +710,9 @@ changeDirBtn.addEventListener('click', function (event) {
 
 gameDirBox.addEventListener('keyup', event => {
     config.folder = event.target.value;
-    saveConfig();
+    (async () => {
+        ipc.invoke('set-launcher-config', config);
+    })();
 });
 
 ipc.on('selected-directory', function (event, dir) {
@@ -685,7 +721,9 @@ ipc.on('selected-directory', function (event, dir) {
     if (fs.existsSync(path.join(dir, 'qt-mt305.dll'))) {
         gameDirBox.value = dir;
         config.folder = dir;
-        saveConfig();
+        (async () => {
+            ipc.invoke('set-launcher-config', config);
+        })();
         toggleAll(false, true);
         resetProgress();
         install.install(config.folder, config.folder, true);
@@ -712,10 +750,12 @@ loginServerSel.addEventListener('change', event => {
 
 loginServerConfirm.addEventListener('click', function (event) {
     config.login = loginServerSel.value;
-    saveConfig();
+    (async () => {
+        ipc.invoke('set-launcher-config', config);
+    })();
 
     (async () => {
-        ipc.invoke('modify-cfg', loginFile, {
+    ipc.invoke('modify-cfg', getLoginFile(), {
             "ClientGame": {
                 "loginServerAddress0": server[config.login][0].address,
                 "loginServerPort0": server[config.login][0].port,
@@ -963,7 +1003,8 @@ async function handleReconnect() {
     isDisconnected = false;
 
     // window.location.reload(); // Full reload if necessary
-    getServerStatus(config.login); // Retry status fetch
+    await configReady;
+    await getServerStatus(config.login); // Retry status fetch
     newsUpdatesView.reloadIgnoringCache(); // Reload news and updates feed
 
     if (
@@ -988,4 +1029,4 @@ async function handleReconnect() {
  *    Launcher Debug
  * ---------------------
  */
-versionDiv.addEventListener('click', event => remote.getCurrentWindow().toggleDevTools()); //Launcher debugging tool button on the launcher version section
+versionDiv.addEventListener('click', event => ipc.send('window-toggle-devtools'));

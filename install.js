@@ -1,14 +1,13 @@
+const ipc = require('electron').ipcRenderer;
 const fs = require('fs');
 const path = require('path');
 const request = require('request');
 const server = require('./json/server');
 
-module.exports.getManifest = function (fullScan, emuPath, checkFiles) {
+module.exports.getManifest = async function (fullScan, emuPath, checkFiles) {
     var files = require('./json/required');
-
-    const configFile = require('os').homedir() + '/Documents/My Games/SWG - Awakening/SWG-Awakening-Launcher-config.json';
-    var config = { login: 'live' };
-    if (fs.existsSync(configFile)) config = JSON.parse(fs.readFileSync(configFile));
+    // Always get config from main process
+    let config = await ipc.invoke('get-launcher-config');
 
     if (fullScan || emuPath && !fs.existsSync(path.join(emuPath, "swgemu.cfg"))) {
         //force download with size:0, md5:""
