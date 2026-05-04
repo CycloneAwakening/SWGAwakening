@@ -45,8 +45,23 @@ let config = { folder: 'C:\\SWGAwakening' };
 async function loadConfig() {
     config = await ipc.invoke('get-launcher-config');
 }
-async function saveConfig() {
-    await ipc.invoke('set-launcher-config', config);
+async function saveConfig(patch) {
+    await ipc.invoke('set-launcher-config', patch);
+    // Update local config object
+    if (patch && typeof patch === 'object') {
+        for (const key in patch) {
+            config[key] = patch[key];
+        }
+    }
+}
+async function deleteConfigKeys(keys) {
+    await ipc.invoke('delete-launcher-config', keys);
+    // Remove keys from local config object
+    if (Array.isArray(keys)) {
+        for (const key of keys) {
+            delete config[key];
+        }
+    }
 }
 
 // On startup, load config and initialize UI
@@ -56,7 +71,7 @@ let configReady = loadConfig().then(() => {
 });
 
 rulesRegView.addEventListener('will-navigate', function (e) {
-    const protocol = require('url').parse(e.url).protocol;
+    const protocol = new URL(e.url).protocol;
     if (protocol === 'http:' || protocol === 'https:')
         shell.openExternal(e.url);
     rulesRegView.stop();
@@ -129,7 +144,7 @@ function changeActiveScreen(button) {
         case "swgInstall":
             if (navButtonNext(button.id)) {
                 console.log(agreeCleanUp.value);
-                args = { "swgdir": swgFolder.value, "cleanup": agreeCleanUp.checked };
+                args = { "swgdir": swgFolderBox.value, "cleanup": agreeCleanUp.checked };
                 ipc.send('setup-complete', args);
                 ipc.send('window-close');
             } else {
@@ -167,7 +182,7 @@ function fileCleanUp() {
     }
 
     if (cleanUpCountValue != 0) {
-        cleanUpFilesSection.style.display = 'none';//Change to 'block' and uncomment fileCleanUp() to make work
+        cleanUpFiles.style.display = 'none';//Change to 'block' and uncomment fileCleanUp() to make work
         cleanUpCount.innerHTML = cleanUpCountValue;
         var cleanUpSizeValueGB = (cleanUpSizeValue / Math.pow(1024, 3)).toFixed(2);
         if (cleanUpSizeValueGB > 0.009)
@@ -175,7 +190,7 @@ function fileCleanUp() {
         else
             cleanUpSize.innerHTML = (cleanUpSizeValue / Math.pow(1024, 2)).toFixed(2) + " MB";
     } else {
-        cleanUpFilesSection.style.display = 'none';
+        cleanUpFiles.style.display = 'none';
     }
 }
 
@@ -198,26 +213,26 @@ browseBtn.addEventListener('click', function (event) {
 
 folderBox.addEventListener('keyup', async event => {
     await loadConfig();
-    config.folder = event.target.value;
-    await saveConfig();
+    await saveConfig({ "folder": event.target.value });
 });
 
 
 ipc.on('selected-directory', async function (event, path) {
     folderBox.value = path;
     await loadConfig();
-    config.folder = path;
-    await saveConfig();
+    await saveConfig({ "folder": path });
     fileCleanUp();
 });
 
+let installBtnBusy = false;
 installBtn.addEventListener('click', function (event) {
-    if (installBtn.disabled = false) return;
-    installBtn.disabled = true;
+    if (installBtnBusy) return;
+    installBtnBusy = true;
     ipc.send('open-directory-dialog', 'install-selected');
 });
 
 ipc.on('install-selected', function (event, dir) {
+    installBtnBusy = false;
     if (fs.existsSync(path.join(dir, 'bottom.tre')) && fs.existsSync(path.join(dir, 'data_animation_00.tre')) && fs.existsSync(path.join(dir, 'data_texture_04.tre'))) {
         swgFolderBox.value = dir;
         swgInstallMessageSuccess.style.display = 'block';

@@ -4,10 +4,15 @@ const path = require('path');
 const request = require('request');
 const server = require('./json/server');
 
+// Config management helpers
+let config = { folder: 'C:\\SWGAwakening' };
+async function loadConfig() {
+    config = await ipc.invoke('get-launcher-config');
+}
+
 module.exports.getManifest = async function (fullScan, emuPath, checkFiles) {
+    await loadConfig();
     var files = require('./json/required');
-    // Always get config from main process
-    let config = await ipc.invoke('get-launcher-config');
 
     if (fullScan || emuPath && !fs.existsSync(path.join(emuPath, "swgemu.cfg"))) {
         //force download with size:0, md5:""
@@ -24,7 +29,16 @@ module.exports.getManifest = async function (fullScan, emuPath, checkFiles) {
         ]);
     }
     request({ url: server[config.login][0].manifestUrl, json: true }, function (err, response, body) {
-        if (err) return console.error(err);
+        if (err) {
+            console.error('[INSTALL] Manifest fetch failed:', err.message);
+            if (checkFiles) checkFiles(files);
+            return;
+        }
+        if (!body || !Array.isArray(body.required)) {
+            console.error('[INSTALL] Manifest response invalid:', body);
+            if (checkFiles) checkFiles(files);
+            return;
+        }
         files = unionByName(files, body.required);
         if (checkFiles) checkFiles(files);
     });
@@ -185,7 +199,7 @@ if (process.send) {
         request(url)
             .on('error', err => {
                 file.close();
-                fs.unlink(dest);
+                fs.unlink(dest, () => {});
                 if (complete) complete(err.message);
             })
             .on('response', res => {

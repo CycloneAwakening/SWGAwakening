@@ -1,4 +1,4 @@
-const { app, WebContentsView, BrowserView, BrowserWindow, ipcMain, dialog } = require('electron');
+const { app, BrowserWindow, ipcMain, dialog } = require('electron');
 const log = require('electron-log');
 const { autoUpdater } = require('electron-updater');
 const path = require('path');
@@ -26,83 +26,17 @@ if (!fs.existsSync(launcherDataStoreDir)) {
     fs.mkdirSync(launcherDataStoreDir, { recursive: true });
 }
 
-// Old data store location for migration
-const homeDir = require('os').homedir();
-const documentsDir = 'Documents';
-const myGamesDir = 'My Games';
-const swgaDir = 'SWG - Awakening';
-const oldLauncherStoreDir = path.join(homeDir, documentsDir, myGamesDir, swgaDir);
-
-// Migrate data from old location if it exists and new location does not have a config file (indicator that migration has already happened)
-// This ensures we don't overwrite existing data in the new location
-if (fs.existsSync(oldLauncherStoreDir) && !fs.existsSync(path.join(launcherDataStoreDir, 'awakening-launcher-config.json'))) {
-    const copyFolderRecursiveSync = (source, target) => {
-        if (!fs.existsSync(target)) fs.mkdirSync(target, { recursive: true });
-        if (fs.existsSync(source)) {
-            fs.readdirSync(source).forEach(file => {
-                const srcPath = path.join(source, file);
-                const tgtPath = path.join(target, file);
-                try {
-                    if (fs.lstatSync(srcPath).isDirectory()) {
-                        copyFolderRecursiveSync(srcPath, tgtPath);
-                    } else {
-                        if (!fs.existsSync(tgtPath)) {
-                            fs.copyFileSync(srcPath, tgtPath);
-                            console.log(`[LAUNCHER STORE] Copied file: ${srcPath} -> ${tgtPath}`);
-                        } else {
-                            console.log(`[LAUNCHER STORE] Skipped existing file: ${tgtPath}`);
-                        }
-                    }
-                } catch (err) {
-                    console.error(`[LAUNCHER STORE] Error copying ${srcPath} to ${tgtPath}: ${err.message}`);
-                }
-            });
-        }
-    };
-    try {
-        copyFolderRecursiveSync(oldLauncherStoreDir, launcherDataStoreDir);
-        console.log(`[LAUNCHER STORE] Migrated data from old store: ${oldLauncherStoreDir} to new store: ${launcherDataStoreDir}`);
-    } catch (err) {
-        console.error(`[LAUNCHER STORE] Error migrating data: ${err.message}`);
-    }
-
-    const deleteFolderRecursiveSync = (dirPath) => {
-        if (fs.existsSync(dirPath)) {
-            fs.readdirSync(dirPath).forEach((file) => {
-                const curPath = path.join(dirPath, file);
-                try {
-                    if (fs.lstatSync(curPath).isDirectory()) {
-                        deleteFolderRecursiveSync(curPath);
-                    } else {
-                        fs.unlinkSync(curPath);
-                    }
-                } catch (err) {
-                    // Log and skip if unable to delete a file/folder
-                    console.warn(`[LAUNCHER STORE] Unable to delete ${curPath}: ${err.message}`);
-                }
-            });
-            try {
-                fs.rmdirSync(dirPath);
-            } catch (err) {
-                // Log and skip if unable to remove directory
-                console.warn(`[LAUNCHER STORE] Unable to remove directory ${dirPath}: ${err.message}`);
-            }
-        }
-    };
-    try {
-        // Attempt to clean up old data store - may fail if access is restricted (CFA)
-        deleteFolderRecursiveSync(oldLauncherStoreDir);
-        console.log(`[LAUNCHER STORE] Cleaned up old data store: ${oldLauncherStoreDir}`);
-    } catch (err) {
-        console.error(`[LAUNCHER STORE] Error cleaning up old data store: ${err.message}`);
-    }
-}
-
-//Change config naming conventions
+// Config file paths
 const oldConfigFile = path.join(launcherDataStoreDir, 'SWG-Awakening-Launcher-config.json');
-
 const configFile = path.join(launcherDataStoreDir, 'awakening-launcher-config.json');
 
+// Config File Mutex for Startup/Migration
+let configFileMutex = Promise.resolve();
+function withConfigFileLock(fn) {
+    // Chain all config file operations to ensure serialization
+    configFileMutex = configFileMutex.then(() => fn()).catch(() => {});
+    return configFileMutex;
+}
 
 // Global config object, always kept in sync with disk
 let config = { folder: 'C:\\SWGAwakening' };
@@ -115,19 +49,100 @@ function loadConfigFromDisk() {
         }
     }
 }
-loadConfigFromDisk();
-console.info(`[LAUNCHER CONFIG] Current config:\n ${JSON.stringify(config)}`);
 
-if (fs.existsSync(oldConfigFile)) {
-    try {
-        fs.copyFileSync(oldConfigFile, configFile);
-        fs.unlinkSync(oldConfigFile);
-    } catch (err) {
-        console.error('[LAUNCHER CONFIG] Error copying and cleaning up old config file:', err);
-    }
+// Old data store location for migration
+const homeDir = require('os').homedir();
+const documentsDir = 'Documents';
+const myGamesDir = 'My Games';
+const swgaDir = 'SWG - Awakening';
+const oldLauncherStoreDir = path.join(homeDir, documentsDir, myGamesDir, swgaDir);
+
+// Migrate data from old location if it exists and new location does not have a config file (indicator that migration has already happened)
+// This ensures we don't overwrite existing data in the new location
+if (fs.existsSync(oldLauncherStoreDir) && !fs.existsSync(path.join(launcherDataStoreDir, 'awakening-launcher-config.json'))) {
+    withConfigFileLock(async () => {
+        const copyFolderRecursiveSync = (source, target) => {
+            if (!fs.existsSync(target)) fs.mkdirSync(target, { recursive: true });
+            if (fs.existsSync(source)) {
+                fs.readdirSync(source).forEach(file => {
+                    const srcPath = path.join(source, file);
+                    const tgtPath = path.join(target, file);
+                    try {
+                        if (fs.lstatSync(srcPath).isDirectory()) {
+                            copyFolderRecursiveSync(srcPath, tgtPath);
+                        } else {
+                            if (!fs.existsSync(tgtPath)) {
+                                fs.copyFileSync(srcPath, tgtPath);
+                                console.log(`[LAUNCHER STORE] Copied file: ${srcPath} -> ${tgtPath}`);
+                            } else {
+                                console.log(`[LAUNCHER STORE] Skipped existing file: ${tgtPath}`);
+                            }
+                        }
+                    } catch (err) {
+                        console.error(`[LAUNCHER STORE] Error copying ${srcPath} to ${tgtPath}: ${err.message}`);
+                    }
+                });
+            }
+        };
+        try {
+            copyFolderRecursiveSync(oldLauncherStoreDir, launcherDataStoreDir);
+            console.log(`[LAUNCHER STORE] Migrated data from old store: ${oldLauncherStoreDir} to new store: ${launcherDataStoreDir}`);
+        } catch (err) {
+            console.error(`[LAUNCHER STORE] Error migrating data: ${err.message}`);
+        }
+
+        const deleteFolderRecursiveSync = (dirPath) => {
+            if (fs.existsSync(dirPath)) {
+                fs.readdirSync(dirPath).forEach((file) => {
+                    const curPath = path.join(dirPath, file);
+                    try {
+                        if (fs.lstatSync(curPath).isDirectory()) {
+                            deleteFolderRecursiveSync(curPath);
+                        } else {
+                            fs.unlinkSync(curPath);
+                        }
+                    } catch (err) {
+                        // Log and skip if unable to delete a file/folder
+                        console.warn(`[LAUNCHER STORE] Unable to delete ${curPath}: ${err.message}`);
+                    }
+                });
+                try {
+                    fs.rmdirSync(dirPath);
+                } catch (err) {
+                    // Log and skip if unable to remove directory
+                    console.warn(`[LAUNCHER STORE] Unable to remove directory ${dirPath}: ${err.message}`);
+                }
+            }
+        };
+        try {
+            // Attempt to clean up old data store - may fail if access is restricted (CFA)
+            deleteFolderRecursiveSync(oldLauncherStoreDir);
+            console.log(`[LAUNCHER STORE] Cleaned up old data store: ${oldLauncherStoreDir}`);
+        } catch (err) {
+            console.error(`[LAUNCHER STORE] Error cleaning up old data store: ${err.message}`);
+        }
+        return;
+    });
 }
 
+// Wrap all startup/migration config file manipulations in the mutex
+withConfigFileLock(async () => {
+    loadConfigFromDisk();
+    console.info(`[LAUNCHER CONFIG] Current config:\n ${JSON.stringify(config)}`);
+
+    if (fs.existsSync(oldConfigFile)) {
+        try {
+            fs.copyFileSync(oldConfigFile, configFile);
+            fs.unlinkSync(oldConfigFile);
+        } catch (err) {
+            console.error('[LAUNCHER CONFIG] Error copying and cleaning up old config file:', err);
+        }
+    }
+    return;
+});
+
 app.commandLine.appendSwitch("disable-http-cache");
+app.commandLine.appendSwitch("disable-gpu-sandbox");
 
 var logFile = path.join(launcherDataStoreDir, 'awakening-launcher-log.txt');
 if (!fs.existsSync(logFile))
@@ -216,7 +231,6 @@ function createWindow() {
         webPreferences: {
             disableBlinkFeatures: "Auxclick",
             nodeIntegration: true,
-            enableRemoteModule: true,
             contextIsolation: false,
             webviewTag: true
         },
@@ -306,49 +320,143 @@ ipcMain.on('open-directory-dialog', async (event, response) => {
     log.info('Selected Directory Path', result.filePaths[0]);
 });
 
-// IPC: Set config (update global and disk)
-async function setLauncherConfig(newConfig) {
-    let release;
-    try {
-        if (!fs.existsSync(launcherDataStoreDir)) {
-            fs.mkdirSync(launcherDataStoreDir, { recursive: true });
-        }
-        // Acquire lock if config file exists
-        if (fs.existsSync(configFile)) {
-            release = await lockfile.lock(configFile, {
-                retries: {
-                    retries: 5,
-                    factor: 2,
-                    minTimeout: 1 * 1000,
-                    maxTimeout: 2 * 1000,
-                    randomize: false,
-                }
-            });
-            console.info(`[LAUNCHER CONFIG] Saving config:\n ${JSON.stringify(newConfig)}`);
-            fs.writeFileSync(configFile, JSON.stringify(newConfig));
-            if (release) {
-                await release();
-            }
+
+// --- Config Update Queue Implementation ---
+const configUpdateQueue = [];
+let configUpdateInProgress = false;
+
+// Helper: Deep merge patch into target (shallow for arrays)
+function deepMergePatch(target, patch) {
+    for (const key of Object.keys(patch)) {
+        if (
+            patch[key] && typeof patch[key] === 'object' &&
+            !Array.isArray(patch[key]) &&
+            target[key] && typeof target[key] === 'object' &&
+            !Array.isArray(target[key])
+        ) {
+            deepMergePatch(target[key], patch[key]);
         } else {
-            console.info(`[LAUNCHER CONFIG] Saving config:\n ${JSON.stringify(newConfig)}`);
-            fs.writeFileSync(configFile, JSON.stringify(newConfig));
+            target[key] = patch[key];
         }
-        // Update global config
-        config = newConfig;
-    } catch (err) {
-        console.error(`[LAUNCHER CONFIG] Error: ${err.message}`);
     }
+    return target;
 }
 
-// IPC: Set config (update global and disk)
-ipcMain.handle('set-launcher-config', async (event, newConfig) => {
-    await setLauncherConfig(newConfig);
+async function processConfigQueue() {
+    if (configUpdateInProgress) return;
+    configUpdateInProgress = true;
+    while (configUpdateQueue.length > 0) {
+        const nextUpdate = configUpdateQueue.shift();
+        try {
+            let diskConfig = {};
+            if (fs.existsSync(configFile)) {
+                try {
+                    diskConfig = JSON.parse(fs.readFileSync(configFile));
+                } catch (e) {
+                    console.error('[LAUNCHER CONFIG] Failed to load config from disk (queue):', e);
+                }
+            }
+            if (nextUpdate.patch) {
+                const mergedConfig = deepMergePatch(diskConfig, nextUpdate.patch);
+                let release;
+                try {
+                    if (!fs.existsSync(configFile)) {
+                        fs.writeFileSync(configFile, '{}');
+                    }
+                    release = await lockfile.lock(configFile, {
+                        retries: {
+                            retries: 5,
+                            factor: 2,
+                            minTimeout: 1 * 1000,
+                            maxTimeout: 2 * 1000,
+                            randomize: false,
+                        }
+                    });
+                    console.info(`[LAUNCHER CONFIG] Saving merged config (patch):\n ${JSON.stringify(mergedConfig)}`);
+                    fs.writeFileSync(configFile, JSON.stringify(mergedConfig));
+                    config = mergedConfig;
+                    if (nextUpdate.resolve) nextUpdate.resolve(true);
+                } catch (err) {
+                    console.error(`[LAUNCHER CONFIG] Error (patch): ${err.message}`);
+                    if (nextUpdate.reject) nextUpdate.reject(err);
+                } finally {
+                    if (release) await release();
+                }
+            } else if (nextUpdate.deleteKeys) {
+                let changed = false;
+                for (const key of nextUpdate.deleteKeys) {
+                    if (key in diskConfig) {
+                        delete diskConfig[key];
+                        changed = true;
+                    }
+                }
+                if (changed) {
+                    let release;
+                    try {
+                        if (!fs.existsSync(configFile)) {
+                            fs.writeFileSync(configFile, '{}');
+                        }
+                        release = await lockfile.lock(configFile, {
+                            retries: {
+                                retries: 5,
+                                factor: 2,
+                                minTimeout: 1 * 1000,
+                                maxTimeout: 2 * 1000,
+                                randomize: false,
+                            }
+                        });
+                        fs.writeFileSync(configFile, JSON.stringify(diskConfig));
+                        config = diskConfig;
+                    } catch (err) {
+                        console.error(`[LAUNCHER CONFIG] Error (delete): ${err.message}`);
+                    } finally {
+                        if (release) await release();
+                    }
+                }
+                if (nextUpdate.resolve) nextUpdate.resolve(true);
+            }
+        } catch (err) {
+            if (nextUpdate.reject) nextUpdate.reject(err);
+        }
+    }
+    configUpdateInProgress = false;
+}
+
+// Queue a config patch update
+function queueConfigPatch(patch) {
+    return new Promise((resolve, reject) => {
+        configUpdateQueue.push({ patch, resolve, reject });
+        processConfigQueue();
+    });
+}
+
+// IPC: Patch config (update only specified keys, queued)
+ipcMain.handle('set-launcher-config', async (event, patch) => {
+    await queueConfigPatch(patch);
     return true;
 });
 
-// IPC: Get current config
+// --- Config Delete Queue Implementation ---
+function queueConfigDelete(keys) {
+    return new Promise((resolve, reject) => {
+        configUpdateQueue.push({ deleteKeys: keys, resolve, reject });
+        processConfigQueue();
+    });
+}
+
+// IPC: Delete config keys (remove specified keys from config and save, queued)
+ipcMain.handle('delete-launcher-config', async (event, keys) => {
+    if (!Array.isArray(keys)) return false;
+    await queueConfigDelete(keys);
+    return true;
+});
+
 ipcMain.handle('get-launcher-config', async () => {
-    // Always reload from disk to ensure latest
+    // Wait for any queued config updates to finish before returning config
+    while (configUpdateInProgress || configUpdateQueue.length > 0) {
+        // Wait in 50ms intervals until the queue is empty and not in progress
+        await new Promise(res => setTimeout(res, 50));
+    }
     loadConfigFromDisk();
     return config;
 });

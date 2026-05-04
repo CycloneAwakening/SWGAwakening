@@ -2,10 +2,10 @@ const ipc = require('electron').ipcRenderer;
 const shell = require('electron').shell;
 const fs = require('fs');
 const request = require('request');
-const process = require('child_process');
+const childProcess = require('child_process');
 const server = require('./json/server');
 const cleanup = require('./json/cleanup');
-const package = require('./package');
+const packageJson = require('./package');
 const install = require('./install');
 const path = require('path');
 const os = require('os');
@@ -72,24 +72,49 @@ async function loadConfig() {
     config = await ipc.invoke('get-launcher-config');
 }
 
-// Save config via main process
-async function saveConfig() {
-    await ipc.invoke('set-launcher-config', config);
+// Save config patch via main process
+async function saveConfig(patch) {
+    await ipc.invoke('set-launcher-config', patch);
+    // Update local config object
+    if (patch && typeof patch === 'object') {
+        for (const key in patch) {
+            config[key] = patch[key];
+        }
+    }
+}
+
+// Delete config keys via main process
+async function deleteConfigKeys(keys) {
+    await ipc.invoke('delete-launcher-config', keys);
+    // Remove keys from local config object
+    if (Array.isArray(keys)) {
+        for (const key of keys) {
+            delete config[key];
+        }
+    }
 }
 
 // On startup, load config and initialize UI
 let configReady = (async () => {
     await loadConfig();
+    // Apply in-memory defaults for keys missing on first run so UI never reads undefined
+    const loginKey = config.login || 'live';
+    config.login = loginKey;
+    config.fps = config.fps || 60;
+    config.ram = config.ram || 2048;
+    config.zoom = config.zoom || 1;
+    if (config.soundsEnabled === undefined || config.soundsEnabled === null) config.soundsEnabled = true;
+
     gameDirBox.value = config.folder;
     enableSounds.checked = config.soundsEnabled;
     fpsSel.value = config.fps;
     ramSel.value = config.ram;
     zoomSel.value = config.zoom;
-    loginServerSel.value = config.login;
-    loginServerSel.setAttribute("data-previous", config.login);
-    versionDiv.innerHTML = package.version;
-    activeServer.innerHTML = server[config.login][0].address;
-    await getServerStatus(config.login);
+    loginServerSel.value = loginKey;
+    loginServerSel.setAttribute("data-previous", loginKey);
+    versionDiv.innerHTML = packageJson.version;
+    activeServer.innerHTML = server[loginKey][0].address;
+    await getServerStatus(loginKey);
 })();
 
 // Constants for sound paths
@@ -116,9 +141,9 @@ function getLoginFile() { return path.join(config.folder, 'login.cfg'); }
 async function setDefault(key, defaultValue) {
     await loadConfig();
     if (config[key] === undefined || config[key] === null) {
-        console.error(`[CONFIG] Config key "${key}" not found, setting default value: ${defaultValue}`);
+        console.error(`[LAUNCHER CONFIG] Config key "${key}" not found, setting default value: ${defaultValue}`);
         config[key] = defaultValue;
-        await saveConfig();
+        await saveConfig({ [key]: defaultValue });
     }
 }
 
@@ -154,17 +179,9 @@ async function cleanOldConfig() {
         'buttonclicksrc',
         'buttonhoversrc'
     ];
-    let modified = false;
-    removedKeys.forEach(key => {
-        if (key in config) {
-            delete config[key];
-            modified = true;
-        }
-    });
-    if (modified) {
-        await saveConfig();
-        console.log("[CONFIG CLEANER] Old config keys removed.");
-    }
+    // Only use deleteConfigKeys, which updates both main and local config
+    await deleteConfigKeys(removedKeys);
+    console.log("[LAUNCHER CONFIG] Old config keys removed.");
 }
 (async () => { await configReady; await cleanOldConfig(); })();
 
@@ -244,9 +261,8 @@ setupSoundListeners();
 
 // Toggle sound setting
 enableSounds.addEventListener('click', () => {
-    config.soundsEnabled = enableSounds.checked;
     (async () => {
-        ipc.invoke('set-launcher-config', config);
+        await saveConfig({ "soundsEnabled": enableSounds.checked });
     })();
 });
 
@@ -570,13 +586,13 @@ function play() {
         "-s", "ClientGame", "loginServerAddress0=" + server[config.login][0].address, "loginServerPort0=" + server[config.login][0].port,
         "-s", "Station", "gameFeatures=34929",
         "-s", "SwgClient", "allowMultipleInstances=true"];
-    var env = Object.create(require('process').env);
+    var env = Object.create(process.env);
     env.SWGCLIENT_MEMORY_SIZE_MB = config.ram;
     if (os.platform() === 'win32') {
-        const child = process.spawn("SWGEmu.exe", args, { cwd: config.folder, env: env, detached: true, stdio: 'ignore' });
+        const child = childProcess.spawn("SWGEmu.exe", args, { cwd: config.folder, env: env, detached: true, stdio: 'ignore' });
         child.unref();
     } else {
-        const child = process.exec('wine SWGEmu.exe', { cwd: config.folder, env: env, detached: true, stdio: 'ignore' }, function (error, stdout, stderr) { });
+        const child = childProcess.exec('wine SWGEmu.exe', { cwd: config.folder, env: env, detached: true, stdio: 'ignore' }, function (error, stdout, stderr) { });
         child.unref();
     }
 }
@@ -588,10 +604,10 @@ function play() {
  */
 skillPlanner.addEventListener('click', event => {
     if (os.platform() === 'win32') {
-        const child = process.spawn("cmd", ["/c", path.join(config.folder, "KSWGProfCalcEditor.exe")], { cwd: config.folder, detached: true, stdio: 'ignore' });
+        const child = childProcess.spawn("cmd", ["/c", path.join(config.folder, "KSWGProfCalcEditor.exe")], { cwd: config.folder, detached: true, stdio: 'ignore' });
         child.unref();
     } else {
-        const child = process.exec('wine KSWGProfCalcEditor.exe', { cwd: config.folder, detached: true, stdio: 'ignore' }, function (error, stdout, stderr) { });
+        const child = childProcess.exec('wine KSWGProfCalcEditor.exe', { cwd: config.folder, detached: true, stdio: 'ignore' }, function (error, stdout, stderr) { });
         child.unref();
     }
 });
@@ -603,10 +619,10 @@ skillPlanner.addEventListener('click', event => {
  */
 swgOptionsBtn.addEventListener('click', event => {
     if (os.platform() === 'win32') {
-        const child = process.spawn("cmd", ["/c", path.join(config.folder, "SWGEmu_Setup.exe")], { cwd: config.folder, detached: true, stdio: 'ignore' });
+        const child = childProcess.spawn("cmd", ["/c", path.join(config.folder, "SWGEmu_Setup.exe")], { cwd: config.folder, detached: true, stdio: 'ignore' });
         child.unref();
     } else {
-        const child = process.exec('wine SWGEmu_Setup.exe', { cwd: config.folder, detached: true, stdio: 'ignore' }, function (error, stdout, stderr) { });
+        const child = childProcess.exec('wine SWGEmu_Setup.exe', { cwd: config.folder, detached: true, stdio: 'ignore' }, function (error, stdout, stderr) { });
         child.unref();
     }
 });
@@ -663,7 +679,7 @@ mainButtonLinks.addEventListener('auxclick', function (e) {
  * ---------------------
  */
 newsUpdatesView.addEventListener('will-navigate', function (e) {
-    const protocol = require('url').parse(e.url).protocol;
+    const protocol = new URL(e.url).protocol;
     if (protocol === 'http:' || protocol === 'https:')
         shell.openExternal(e.url);
     newsUpdatesView.stop();
@@ -690,50 +706,27 @@ newsUpdatesRefresh.addEventListener('click', function (e) {
  *    Game Config
  * -----------------
  */
-fpsSel.addEventListener('change', event => {
-    if (event.target.value > 60)
-        (async () => {
-            ipc.invoke('modify-cfg', getOptionsFile(), {
-                "Direct3d9": {
-                    "allowTearing": 1
-                }
-            }, false);
-        })();
-
-    (async () => {
-    ipc.invoke('modify-cfg', getOptionsFile(), {
-            "Direct3d9": {
-                "fullscreenRefreshRate": event.target.value
-            }
+fpsSel.addEventListener('change', async event => {
+    const val = event.target.value;
+    if (val > 60) {
+        await ipc.invoke('modify-cfg', getOptionsFile(), {
+            "Direct3d9": { "allowTearing": 1 }
         }, false);
-    })();
-
-
-    config.fps = event.target.value;
-    (async () => {
-        ipc.invoke('set-launcher-config', config);
-    })();
+    }
+    await ipc.invoke('modify-cfg', getOptionsFile(), {
+        "Direct3d9": { "fullscreenRefreshRate": val }
+    }, false);
+    await saveConfig({ "fps": val });
     alert(`The first time you launch the SWG client after changing your FPS value, it will take an extended time to open the client window due to needing to edit the executable directly. Please be patient.`);
 });
-ramSel.addEventListener('change', event => {
-    config.ram = event.target.value;
-    (async () => {
-        ipc.invoke('set-launcher-config', config);
-    })();
+ramSel.addEventListener('change', async event => {
+    await saveConfig({ "ram": event.target.value });
 });
-zoomSel.addEventListener('change', event => {
-    (async () => {
-    ipc.invoke('modify-cfg', getLoginFile(), {
-            "ClientGame": {
-                "freeChaseCameraMaximumZoom": event.target.value
-            }
-        }, false);
-    })();
-
-    config.zoom = event.target.value;
-    (async () => {
-        ipc.invoke('set-launcher-config', config);
-    })();
+zoomSel.addEventListener('change', async event => {
+    await ipc.invoke('modify-cfg', getLoginFile(), {
+        "ClientGame": { "freeChaseCameraMaximumZoom": event.target.value }
+    }, false);
+    await saveConfig({ "zoom": event.target.value });
 });
 
 // "Change" directory button button pressed
@@ -741,28 +734,26 @@ changeDirBtn.addEventListener('click', function (event) {
     ipc.send('open-directory-dialog', 'selected-directory');
 });
 
+let gameDirSaveTimer = null;
 gameDirBox.addEventListener('keyup', event => {
-    config.folder = event.target.value;
-    (async () => {
-        ipc.invoke('set-launcher-config', config);
-    })();
+    clearTimeout(gameDirSaveTimer);
+    const val = event.target.value;
+    gameDirSaveTimer = setTimeout(async () => {
+        await saveConfig({ "folder": val });
+    }, 500);
 });
 
-ipc.on('selected-directory', function (event, dir) {
+ipc.on('selected-directory', async function (event, dir) {
     configPromptClose.setAttribute("data-prompt-attr", "gameDir");
     configPromptClose.setAttribute("data-prompt-value", gameDirBox.value);
     if (fs.existsSync(path.join(dir, 'qt-mt305.dll'))) {
         gameDirBox.value = dir;
-        config.folder = dir;
-        (async () => {
-            ipc.invoke('set-launcher-config', config);
-        })();
+        await saveConfig({ "folder": dir });
         toggleAll(false, true);
         resetProgress();
         install.install(config.folder, config.folder, true);
     } else {
-        var gameDirPromptDir = document.getElementById('gameDirPromptDir');
-        gameDirPromptBox.value = dir;
+        document.getElementById('gameDirPromptBox').value = dir;
         configOverlayPrompt("gameDirPrompt");
         helpBtn.disabled = true;
     }
@@ -784,7 +775,7 @@ loginServerSel.addEventListener('change', event => {
 loginServerConfirm.addEventListener('click', function (event) {
     config.login = loginServerSel.value;
     (async () => {
-        ipc.invoke('set-launcher-config', config);
+        await saveConfig({ "login": loginServerSel.value });
     })();
 
     (async () => {
