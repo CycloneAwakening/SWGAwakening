@@ -1,10 +1,5 @@
-const ipc = require('electron').ipcRenderer;
-const shell = require('electron').shell;
-const fs = require('fs');
-const process = require('child_process');
-const cleanup = require('../json/cleanup');
-const install = require('../install');
-const path = require('path');
+const cleanup = window.electronAPI.cleanupConfig;
+const pathJoin = window.electronAPI.pathJoin;
 
 const sidebarLinks = document.getElementById('sidebarLinks');
 const rulesAgree = document.getElementById('ToSReadOnline');
@@ -24,6 +19,7 @@ const setupNext = document.getElementById('setupNext');
 const setupCancel = document.getElementById('setupCancel');
 
 const rulesRegView = document.getElementById('rulesRegView');
+const rulesRefresh = document.getElementById('rulesRefresh');
 
 const agreeRules = document.getElementById('agreeRules');
 const agreeOwner = document.getElementById('agreeOwner');
@@ -43,10 +39,10 @@ const cleanUpSize = document.getElementById('cleanUpSize');
 
 let config = { folder: 'C:\\SWGAwakening' };
 async function loadConfig() {
-    config = await ipc.invoke('get-launcher-config');
+    config = await window.electronAPI.getConfig();
 }
 async function saveConfig(patch) {
-    await ipc.invoke('set-launcher-config', patch);
+    await window.electronAPI.setConfig(patch);
     // Update local config object
     if (patch && typeof patch === 'object') {
         for (const key in patch) {
@@ -55,7 +51,7 @@ async function saveConfig(patch) {
     }
 }
 async function deleteConfigKeys(keys) {
-    await ipc.invoke('delete-launcher-config', keys);
+    await window.electronAPI.deleteConfig(keys);
     // Remove keys from local config object
     if (Array.isArray(keys)) {
         for (const key of keys) {
@@ -70,19 +66,87 @@ let configReady = loadConfig().then(() => {
     fileCleanUp();
 });
 
-rulesRegView.addEventListener('will-navigate', function (e) {
-    const protocol = new URL(e.url).protocol;
-    if (protocol === 'http:' || protocol === 'https:')
-        shell.openExternal(e.url);
-    rulesRegView.stop();
+function updateRulesViewBounds() {
+    const rect = rulesRegView.getBoundingClientRect();
+    window.electronAPI.setRulesViewBounds({
+        x: Math.round(rect.left),
+        y: Math.round(rect.top),
+        width: Math.round(rect.width),
+        height: Math.round(rect.height)
+    });
+
+    const refreshRect = rulesRefresh.getBoundingClientRect();
+    window.electronAPI.setRulesRefreshBounds({
+        x: Math.round(refreshRect.left),
+        y: Math.round(refreshRect.top),
+        width: Math.max(1, Math.round(refreshRect.width)),
+        height: Math.max(1, Math.round(refreshRect.height))
+    });
+}
+
+function isRulesScreenActive() {
+    const rulesScreen = document.getElementById('rulesAgree');
+    return !!(rulesScreen && rulesScreen.classList.contains('active'));
+}
+
+function syncRulesViewVisibility() {
+    const visible = isRulesScreenActive();
+    window.electronAPI.setRulesViewVisible(visible);
+    if (!visible) {
+        rulesRefresh.disabled = true;
+        rulesRefresh.className = 'rules-refresh hidden';
+        window.electronAPI.setRulesRefreshState('hidden');
+        return;
+    }
+
+    updateRulesViewBounds();
+    if (rulesRefresh.classList.contains('spinner')) return;
+    rulesRefresh.disabled = false;
+    rulesRefresh.className = 'rules-refresh idle';
+    window.electronAPI.setRulesRefreshState('idle');
+}
+
+window.addEventListener('resize', updateRulesViewBounds);
+window.addEventListener('load', updateRulesViewBounds);
+setTimeout(updateRulesViewBounds, 50);
+setTimeout(updateRulesViewBounds, 350);
+setTimeout(syncRulesViewVisibility, 50);
+
+window.electronAPI.onRulesViewLoaded(function () {
+    if (!isRulesScreenActive()) {
+        rulesRefresh.className = 'rules-refresh hidden';
+        window.electronAPI.setRulesRefreshState('hidden');
+        return;
+    }
+
+    rulesRefresh.className = 'rules-refresh hidden';
+    window.electronAPI.setRulesRefreshState('hidden');
+    setTimeout(function () {
+        if (!isRulesScreenActive()) return;
+        rulesRefresh.disabled = false;
+        rulesRefresh.className = 'rules-refresh idle';
+        window.electronAPI.setRulesRefreshState('idle');
+        updateRulesViewBounds();
+    }, 2000);
+});
+
+window.electronAPI.onRulesRefreshClicked(function () {
+    rulesRefresh.disabled = true;
+    rulesRefresh.className = 'rules-refresh spinner';
+    window.electronAPI.setRulesRefreshState('spinner');
+});
+
+rulesRefresh.addEventListener('click', function () {
+    rulesRefresh.disabled = true;
+    rulesRefresh.className = 'rules-refresh spinner';
+    window.electronAPI.setRulesRefreshState('spinner');
 });
 
 
-//minBtn.addEventListener('click', event => ipc.send('window-minimize'));
-closeBtn.addEventListener('click', event => ipc.send('window-close'));
+closeBtn.addEventListener('click', () => window.electronAPI.close());
 
 setupCancel.addEventListener('click', function (event) {
-    ipc.send('window-close');
+    window.electronAPI.close();
 });
 
 agreeRules.addEventListener('click', function (event) {
@@ -124,7 +188,7 @@ function changeActiveScreen(button) {
         case "rulesAgree":
             if (navButtonNext(button.id)) {
                 document.getElementById("installDir").classList.add("active");
-                setupPrev.style.display = 'block';
+                setupPrev.style.visibility = 'visible';
             }
             break;
         case "installDir":
@@ -138,15 +202,15 @@ function changeActiveScreen(button) {
                 agreeRules.checked = false;
                 agreeOwner.checked = false;
                 setupNext.disabled = true;
-                setupPrev.style.display = 'none';
+                setupPrev.style.visibility = 'hidden';
             }
             break;
         case "swgInstall":
             if (navButtonNext(button.id)) {
                 console.log(agreeCleanUp.value);
                 args = { "swgdir": swgFolderBox.value, "cleanup": agreeCleanUp.checked };
-                ipc.send('setup-complete', args);
-                ipc.send('window-close');
+                window.electronAPI.setupComplete(args);
+                window.electronAPI.close();
             } else {
                 setupNext.innerHTML = "Next";
                 setupNext.className = "swga-button swga-btn-icon swga-btn-icon-right";
@@ -158,8 +222,10 @@ function changeActiveScreen(button) {
             }
             break;
         default:
-            ipc.send('window-close');
+            window.electronAPI.close();
     }
+
+    syncRulesViewVisibility();
 }
 
 function navButtonNext(button) {
@@ -169,17 +235,10 @@ function navButtonNext(button) {
         return false;
 }
 
-function fileCleanUp() {
-    var cleanUpCountValue = 0;
-    var cleanUpSizeValue = 0;
-
-    for (let file of cleanup) {
-        if (fs.existsSync(path.join(config.folder, file.name))) {
-            cleanUpCountValue += 1;
-            cleanUpSizeValue += file.size;
-            console.log("Found: " + file.name);
-        }
-    }
+async function fileCleanUp() {
+    const info = await window.electronAPI.getCleanupInfo(config.folder, cleanup);
+    const cleanUpCountValue = info.count;
+    const cleanUpSizeValue = info.size;
 
     if (cleanUpCountValue != 0) {
         cleanUpFiles.style.display = 'none';//Change to 'block' and uncomment fileCleanUp() to make work
@@ -196,18 +255,18 @@ function fileCleanUp() {
 
 rulesAgree.addEventListener('click', function (e) {
     e.preventDefault();
-    shell.openExternal(e.target.href);
+    window.electronAPI.openExternal(e.target.href);
 });
 
 sidebarLinks.addEventListener('click', function (e) {
     e.preventDefault();
     if (e.target.classList.contains("sidebar-link"))
-        shell.openExternal(e.target.href);
+    window.electronAPI.openExternal(e.target.href);
 });
 
 
 browseBtn.addEventListener('click', function (event) {
-    ipc.send('open-directory-dialog', 'selected-directory');
+    window.electronAPI.openDirectoryDialog('selected-directory');
 });
 
 
@@ -217,23 +276,26 @@ folderBox.addEventListener('keyup', async event => {
 });
 
 
-ipc.on('selected-directory', async function (event, path) {
-    folderBox.value = path;
+window.electronAPI.onDirectorySelected(async function (dirPath) {
+    folderBox.value = dirPath;
     await loadConfig();
-    await saveConfig({ "folder": path });
-    fileCleanUp();
+    await saveConfig({ "folder": dirPath });
+    await fileCleanUp();
 });
 
 let installBtnBusy = false;
 installBtn.addEventListener('click', function (event) {
     if (installBtnBusy) return;
     installBtnBusy = true;
-    ipc.send('open-directory-dialog', 'install-selected');
+    window.electronAPI.openDirectoryDialog('install-selected');
 });
 
-ipc.on('install-selected', function (event, dir) {
+window.electronAPI.onInstallDirectorySelected(async function (dir) {
+    // Always clear the busy guard first — main now replies (with null) even when the
+    // dialog is cancelled, so the install button never gets stuck disabled.
     installBtnBusy = false;
-    if (fs.existsSync(path.join(dir, 'bottom.tre')) && fs.existsSync(path.join(dir, 'data_animation_00.tre')) && fs.existsSync(path.join(dir, 'data_texture_04.tre'))) {
+    if (!dir) return;
+    if (await window.electronAPI.checkSwgSource(dir)) {
         swgFolderBox.value = dir;
         swgInstallMessageSuccess.style.display = 'block';
         swgInstallMessageFail.style.display = 'none';

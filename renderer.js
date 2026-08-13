@@ -1,14 +1,5 @@
-const ipc = require('electron').ipcRenderer;
-const shell = require('electron').shell;
-const fs = require('fs');
-const request = require('request');
-const childProcess = require('child_process');
-const server = require('./json/server');
-const cleanup = require('./json/cleanup');
-const packageJson = require('./package');
-const install = require('./install');
-const path = require('path');
-const os = require('os');
+// All Node.js / Electron APIs are accessed through the contextBridge (preload.js)
+const { serverConfig: server, cleanupConfig: cleanup, appVersion, pathJoin } = window.electronAPI;
 
 const playBtn = document.getElementById('play');
 
@@ -44,12 +35,106 @@ const loginServerConfirm = document.getElementById('loginServerConfirm');
 const ramSel = document.getElementById('ram');
 const fpsSel = document.getElementById('fps');
 const zoomSel = document.getElementById('zoom');
+const zoomValue = document.getElementById('zoomValue');
+const zoomPopoverToggle = document.getElementById('zoomPopoverToggle');
+const zoomPopover = document.getElementById('zoomPopover');
+const zoomPopoverClose = document.getElementById('zoomPopoverClose');
+const fpsNoticePanel = document.getElementById('fpsNoticePanel');
+const fpsNoticeClose = document.getElementById('fpsNoticeClose');
+
+const DEFAULT_CONFIG = {
+    folder: 'C:\\SWGAwakening',
+    soundsEnabled: true,
+    fps: 60,
+    ram: 2048,
+    zoom: 1,
+    login: 'live',
+};
+
+const ALLOWED_FPS = new Set([30, 60, 120, 144]);
+const ALLOWED_RAM = new Set([750, 1024, 1536, 2048]);
+
+function normalizeLauncherConfig(rawConfig) {
+    const normalized = {};
+
+    const folder = typeof rawConfig.folder === 'string' ? rawConfig.folder.trim() : '';
+    normalized.folder = folder.length > 0 ? folder : DEFAULT_CONFIG.folder;
+
+    normalized.soundsEnabled = typeof rawConfig.soundsEnabled === 'boolean'
+        ? rawConfig.soundsEnabled
+        : DEFAULT_CONFIG.soundsEnabled;
+
+    const fps = Number.parseInt(rawConfig.fps, 10);
+    normalized.fps = ALLOWED_FPS.has(fps) ? fps : DEFAULT_CONFIG.fps;
+
+    const ram = Number.parseInt(rawConfig.ram, 10);
+    normalized.ram = ALLOWED_RAM.has(ram) ? ram : DEFAULT_CONFIG.ram;
+
+    const zoom = Number.parseInt(rawConfig.zoom, 10);
+    if (Number.isFinite(zoom)) {
+        normalized.zoom = Math.min(10, Math.max(1, zoom));
+    } else {
+        normalized.zoom = DEFAULT_CONFIG.zoom;
+    }
+
+    normalized.login = rawConfig.login === 'test' ? 'test' : DEFAULT_CONFIG.login;
+
+    return normalized;
+}
+
+function diffConfigPatch(currentConfig, normalizedConfig) {
+    const patch = {};
+    for (const key of Object.keys(normalizedConfig)) {
+        if (currentConfig[key] !== normalizedConfig[key]) {
+            patch[key] = normalizedConfig[key];
+        }
+    }
+    return patch;
+}
+
+function updateZoomDisplay(value) {
+    if (!zoomValue) return;
+    const normalized = normalizeZoom(value);
+    const sliderPercent = Math.round(((normalized - 1) / 9) * 100);
+    const zoomBand = getZoomBand(normalized);
+    zoomValue.textContent = `Zoom: ${normalized} (${zoomBand})`;
+    if (zoomPopoverToggle) {
+        const optionLabel = `${normalized} (${zoomBand})`;
+        if (zoomPopoverToggle.tagName === 'SELECT') {
+            if (zoomPopoverToggle.options.length === 0) {
+                const option = document.createElement('option');
+                zoomPopoverToggle.appendChild(option);
+            }
+            zoomPopoverToggle.options[0].text = optionLabel;
+            zoomPopoverToggle.options[0].value = String(normalized);
+            zoomPopoverToggle.selectedIndex = 0;
+        } else {
+            zoomPopoverToggle.textContent = optionLabel;
+        }
+    }
+    if (zoomSel) {
+        zoomSel.style.setProperty('--zoom-progress', `${sliderPercent}%`);
+    }
+}
+
+function normalizeZoom(value) {
+    return Math.min(10, Math.max(1, Number.parseInt(value, 10) || 1));
+}
+
+function getZoomBand(value) {
+    const normalized = normalizeZoom(value);
+    if (normalized === 1) return 'DEFAULT';
+    if (normalized <= 3) return 'NEAR';
+    if (normalized <= 7) return 'MID';
+    return 'FAR';
+}
 
 // External Links
 const headerLinks = document.getElementById("headerLinks");
 const mainButtonLinks = document.getElementById('mainButtonLinks');
 const newsUpdatesView = document.getElementById('newsUpdatesView');
 const newsUpdatesRefresh = document.getElementById('newsUpdatesRefresh');
+const newsUpdatesWrapper = document.querySelector('.news-updates-wrapper');
 
 const skillPlanner = document.getElementById('skillPlanner');
 
@@ -64,17 +149,42 @@ verifyBtn.disabled = true;
 gameConfigBtn.disabled = true;
 swgOptionsBtn.disabled = true;
 
+let fpsNoticeHideTimer = null;
+
+function showFpsNotice() {
+    if (!fpsNoticePanel) return;
+    fpsNoticePanel.style.display = 'block';
+    if (fpsNoticeHideTimer) clearTimeout(fpsNoticeHideTimer);
+    fpsNoticeHideTimer = setTimeout(() => {
+        fpsNoticePanel.style.display = 'none';
+        fpsNoticeHideTimer = null;
+    }, 6000);
+}
+
+function hideFpsNotice() {
+    if (!fpsNoticePanel) return;
+    fpsNoticePanel.style.display = 'none';
+    if (fpsNoticeHideTimer) {
+        clearTimeout(fpsNoticeHideTimer);
+        fpsNoticeHideTimer = null;
+    }
+}
+
+if (fpsNoticeClose) {
+    fpsNoticeClose.addEventListener('click', hideFpsNotice);
+}
+
 // Use Electron's userData directory for the launcher data store
 
 let config = { folder: 'C:\\SWGAwakening' };
 // Always fetch config from main process
 async function loadConfig() {
-    config = await ipc.invoke('get-launcher-config');
+    config = await window.electronAPI.getConfig();
 }
 
 // Save config patch via main process
 async function saveConfig(patch) {
-    await ipc.invoke('set-launcher-config', patch);
+    await window.electronAPI.setConfig(patch);
     // Update local config object
     if (patch && typeof patch === 'object') {
         for (const key in patch) {
@@ -85,7 +195,7 @@ async function saveConfig(patch) {
 
 // Delete config keys via main process
 async function deleteConfigKeys(keys) {
-    await ipc.invoke('delete-launcher-config', keys);
+    await window.electronAPI.deleteConfig(keys);
     // Remove keys from local config object
     if (Array.isArray(keys)) {
         for (const key of keys) {
@@ -96,25 +206,71 @@ async function deleteConfigKeys(keys) {
 
 // On startup, load config and initialize UI
 let configReady = (async () => {
+  try {
+    console.log('[RENDERER] configReady start');
     await loadConfig();
-    // Apply in-memory defaults for keys missing on first run so UI never reads undefined
-    const loginKey = config.login || 'live';
-    config.login = loginKey;
-    config.fps = config.fps || 60;
-    config.ram = config.ram || 2048;
-    config.zoom = config.zoom || 1;
-    if (config.soundsEnabled === undefined || config.soundsEnabled === null) config.soundsEnabled = true;
+
+    // Normalize invalid or missing values and persist corrections.
+    const normalizedConfig = normalizeLauncherConfig(config || {});
+    const patch = diffConfigPatch(config || {}, normalizedConfig);
+    config = normalizedConfig;
+    if (Object.keys(patch).length > 0) {
+        console.warn('[LAUNCHER CONFIG] Corrected invalid startup config values:', patch);
+        await saveConfig(patch);
+    }
+
+    const loginKey = config.login;
 
     gameDirBox.value = config.folder;
     enableSounds.checked = config.soundsEnabled;
     fpsSel.value = config.fps;
     ramSel.value = config.ram;
     zoomSel.value = config.zoom;
+    updateZoomDisplay(config.zoom);
     loginServerSel.value = loginKey;
     loginServerSel.setAttribute("data-previous", loginKey);
-    versionDiv.innerHTML = packageJson.version;
+    versionDiv.innerHTML = appVersion;
     activeServer.innerHTML = server[loginKey][0].address;
-    await getServerStatus(loginKey);
+
+    // Read actual FPS from exe to seed session tracker.
+    // This handles the case where user changed FPS in UI but exited before playing.
+    try {
+        const result = await window.electronAPI.readExeFps();
+        console.log('[RENDERER] readExeFps result:', JSON.stringify(result));
+        if (result && result.exeFps !== null && result.exeFps !== undefined) {
+            sessionLastPatchedFps = Number(result.exeFps);
+            console.log('[RENDERER] Seeded sessionLastPatchedFps from exe:', result.exeFps, '| configFps:', config.fps);
+            
+            // Alert user if there's an unapplied FPS change
+            const exeFps = Number(result.exeFps);
+            const configFps = Number(config.fps);
+            if (exeFps !== configFps) {
+                console.warn('[RENDERER] Unapplied FPS change detected! Exe:', exeFps, 'Config:', configFps);
+                alert(`Unapplied FPS Change Detected\n\nYour FPS setting was changed from ${exeFps} FPS to ${configFps} FPS, but was not applied last session.\n\nThe updated value of ${configFps} FPS will apply next time you click "Play".`);
+            }
+        } else {
+            // Fallback to config FPS if exe read fails
+            sessionLastPatchedFps = Number(config.fps);
+            console.warn('[RENDERER] readExeFps returned null/undefined, falling back to config.fps:', config.fps, 'Full result:', JSON.stringify(result));
+        }
+    } catch (err) {
+        // Fallback to config FPS if read errors
+        sessionLastPatchedFps = Number(config.fps);
+        console.error('[RENDERER] readExeFps threw error, falling back to config.fps:', config.fps, 'Error:', err.message || err);
+    }
+
+    // Do not block startup readiness on network calls.
+    getServerStatus(loginKey).catch((err) => {
+        console.warn('[RENDERER] Initial server status request failed:', err && err.message ? err.message : err);
+    });
+    console.log('[RENDERER] configReady complete');
+  } catch (err) {
+    // Never let a config-load failure leave configReady rejected — downstream code
+    // `await`s it before enabling the UI, so a rejection would brick the launcher
+    // with no feedback. Surface an error and let startup continue with defaults.
+    console.error('[RENDERER] configReady failed:', err && err.message ? err.message : err);
+    try { progressText.innerHTML = 'Failed to load launcher configuration. Some settings may be unavailable.'; } catch (e) {}
+  }
 })();
 
 // Constants for sound paths
@@ -129,8 +285,8 @@ const buttonHoverSound = document.getElementById('buttonHoverSound');
 const wrapper = document.getElementById('launcher-wrapper'); //Used to apply events to every tag in launcher-wrap div
 const enableSounds = document.getElementById('enableSounds');
 
-function getOptionsFile() { return path.join(config.folder, 'options.cfg'); }
-function getLoginFile() { return path.join(config.folder, 'login.cfg'); }
+function getOptionsFile() { return 'options'; }
+function getLoginFile() { return 'login'; }
 /*
  * ---------------------
  *    Config Loading & Saving
@@ -158,14 +314,14 @@ async function setDefault(key, defaultValue) {
     await setDefault('login', 'live');
 
     //Apply to cfg files
-    await ipc.invoke('modify-cfg', getLoginFile(), {
+    await window.electronAPI.modifyCfg(getLoginFile(), {
         "ClientGame": {
             "loginServerAddress0": server[config.login][0].address,
             "loginServerPort0": server[config.login][0].port,
             "freeChaseCameraMaximumZoom": config.zoom
         }
     }, false);
-    await ipc.invoke('modify-cfg', getOptionsFile(), {
+    await window.electronAPI.modifyCfg(getOptionsFile(), {
         "Direct3d9": {
             "fullscreenRefreshRate": config.fps
         }
@@ -290,7 +446,7 @@ async function getServerStatus(serverLogin) {
     console.log("[SERVER STATUS] Starting get server status attempt (lock).");
 
     try {
-        const body = await fetchWithTimeout(server[serverLogin][0].statusUrl, 5000);
+        const body = await fetchWithTimeout(server[serverLogin][0].statusUrl, 8000);
         if (!validateBody(body)) {
             console.warn("[SERVER STATUS] Invalid body format. Retrying...");
             updateServerDisplay(body);
@@ -306,7 +462,7 @@ async function getServerStatus(serverLogin) {
         }
 
     } catch (err) {
-        if (err.name === 'AbortError') {
+        if (err.name === 'AbortError' || (err && err.message === 'Request timed out')) {
             // Timeout occurred, handle gracefully
             console.warn('[SERVER STATUS] Server status request timed out.');
             serverStatus.style.color = '#CC1100';
@@ -340,16 +496,27 @@ async function getServerStatusRetry(serverLogin, maxRetries = 5) {
         return;
     }
     let retryFailed = true;
+    let sawValidResponse = false;
+
+    function normalizeStatus(statusText) {
+        return String(statusText || '').trim().toLowerCase();
+    }
+
+    function isRetryableStatus(statusText) {
+        const status = normalizeStatus(statusText);
+        return (
+            status === 'unknown' ||
+            status === 'offline' ||
+            status === 'timeout' ||
+            status === 'invalid' ||
+            status.includes('error')
+        );
+    }
 
     for (let i = 0; i < maxRetries; i++) {
-        const currentStatus = serverStatus.innerHTML.toLowerCase();
+        const currentStatus = normalizeStatus(serverStatus.innerHTML);
         // Retry if status is unknown, offline, timeout, or error
-        if (
-            currentStatus !== "unknown" &&
-            currentStatus !== "offline" &&
-            currentStatus !== "timeout" &&
-            !currentStatus.includes("error")
-        ) {
+        if (!isRetryableStatus(currentStatus)) {
             retryFailed = false;
             break;
         }
@@ -357,22 +524,17 @@ async function getServerStatusRetry(serverLogin, maxRetries = 5) {
         try {
             console.log(`[SERVER STATUS] Retry attempt ${i + 1}...`);
 
-            const body = await fetchWithTimeout(server[serverLogin][0].statusUrl, 5000);
+            const body = await fetchWithTimeout(server[serverLogin][0].statusUrl, 8000);
             if (!validateBody(body)) {
                 console.warn(`[SERVER STATUS] Invalid server response during retry attempt ${i + 1}.`);
                 continue;
             }
 
+            sawValidResponse = true;
             updateServerDisplay(body);
 
-            const status = serverStatus.innerHTML.toLowerCase();
-            if (
-                status !== "unknown" &&
-                status !== "offline" &&
-                status !== "timeout" &&
-                !status.includes("error") &&
-                !status.includes("invalid")
-            ) {
+            const status = normalizeStatus(body.status);
+            if (!isRetryableStatus(status)) {
                 console.log(`[SERVER STATUS] Server produced a non-error, non-offline, non-timeout, non-error state during retry attempt ${i + 1}.`);
                 retryFailed = false;
                 break;
@@ -385,8 +547,10 @@ async function getServerStatusRetry(serverLogin, maxRetries = 5) {
         await new Promise(res => setTimeout(res, 2000 * Math.pow(1.5, i)));
     }
 
-    if (retryFailed) {
+    if (retryFailed && !sawValidResponse) {
         console.log("[SERVER STATUS] All retry attempts failed. Displaying failure message.");
+    } else if (retryFailed && sawValidResponse) {
+        console.log("[SERVER STATUS] Retry attempts completed with valid responses, but server remained in a retryable state.");
     }
 }
 
@@ -398,8 +562,10 @@ function updateServerDisplay(body) {
 
     const last = updateServerDisplay.lastBody;
     let updated = false;
+    const displayedStatus = String(serverStatus.innerHTML || '').trim().toLowerCase();
+    const incomingStatus = String(body.status || '').trim().toLowerCase();
 
-    if (body.status !== last.status || serverStatus.innerHTML.toLowerCase().includes("error")) {
+    if (body.status !== last.status || displayedStatus !== incomingStatus || displayedStatus.includes("error")) {
         serverStatus.innerHTML = body.status;
         switch (body.status) {
             case "Online":
@@ -474,7 +640,11 @@ function validateBody(body) {
 
 async function fetchWithTimeout(url, timeoutMs) {
     const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), timeoutMs);
+    let didTimeout = false;
+    const timeout = setTimeout(() => {
+        didTimeout = true;
+        controller.abort();
+    }, timeoutMs);
 
     try {
         const response = await fetch(url, {
@@ -485,6 +655,11 @@ async function fetchWithTimeout(url, timeoutMs) {
 
         if (!response.ok) throw new Error(`HTTP ${response.status}`);
         return await response.json();
+    } catch (err) {
+        if (didTimeout) {
+            throw new Error('Request timed out');
+        }
+        throw err;
     } finally {
         clearTimeout(timeout);
     }
@@ -507,40 +682,110 @@ async function serverStatLoop() {
  *    Window Buttons
  * ---------------------
  */
-minBtn.addEventListener('click', event => ipc.send('window-minimize'));
-closeBtn.addEventListener('click', event => ipc.send('window-close'));
+minBtn.addEventListener('click', () => window.electronAPI.minimize());
+closeBtn.addEventListener('click', () => window.electronAPI.close());
+
+let sessionLastPatchedFps = null;
+let gameIsRunning = false;
+let buttonPriorLabel = 'Play';
+
+function logPlayFlow(state, details) {
+    if (typeof details === 'undefined') {
+        console.log(`[PLAY FLOW] ${state}`);
+        return;
+    }
+    try {
+        console.log(`[PLAY FLOW] ${state} ${JSON.stringify(details)}`);
+    } catch (_err) {
+        console.log(`[PLAY FLOW] ${state} ${String(details)}`);
+    }
+}
 
 /*
  * ---------------------
  *    Play Button Logic
  * ---------------------
  */
-playBtn.addEventListener('click', event => {
+playBtn.addEventListener('click', () => {
+    logPlayFlow('click', {
+        disabled: playBtn.disabled,
+        setupMode: playBtn.classList.contains('game-setup'),
+        label: playBtn.innerHTML,
+        configFps: config.fps
+    });
     if (playBtn.disabled) return;
     if (playBtn.classList.contains("game-setup")) {
-        ipc.send('setup-game');
-    } else {
-        var fd = fs.openSync(path.join(config.folder, "SWGEmu.exe"), "r");
-        var buf = Buffer.alloc(7);
-        var bytes = fs.readSync(fd, buf, 0, 7, 0x1153);
-        fs.closeSync(fd);
-        fd = null;
-        if (bytes == 7 && buf.readUInt8(0) == 0xc7 && buf.readUInt8(1) == 0x45 && buf.readUInt8(2) == 0x94 && buf.readFloatLE(3) != config.fps) {
-            var randomAccessFile = require('random-access-file');
-            var file = new randomAccessFile(path.join(config.folder, "SWGEmu.exe"));
-            buf = Buffer.alloc(4);
-            buf.writeFloatLE(config.fps);
-            file.write(0x1156, buf, err => {
-                if (err) alert(`Could not apply new FPS value (${config.fps} FPS). Close all instances of the game to update FPS. The requested SWG client instance will launch with old FPS value applied.`);
-                file.close(play);
-            })
-        } else {
-            play();
+        logPlayFlow('setup mode -> setupGame');
+        window.electronAPI.setupGame();
+        return;
+    }
+
+    const desiredFps = Number(config.fps);
+    buttonPriorLabel = playBtn.innerHTML;
+    playBtn.disabled = true;
+    logPlayFlow('play button disabled; requesting fps patch check', {
+        priorLabel: buttonPriorLabel,
+        desiredFps
+    });
+
+    function launchGame() {
+        playBtn.innerHTML = "Launching...";
+        logPlayFlow('state -> Launching...');
+        gameIsRunning = true;
+        play()
+            .catch((err) => {
+                console.error(`[PLAY] Launch failed: ${err.message}`);
+                gameIsRunning = false;
+                playBtn.innerHTML = buttonPriorLabel;
+                playBtn.disabled = false;
+            });
+    }
+
+    function afterPatch(result) {
+        logPlayFlow('patch result', result || null);
+        if (result && result.error && result.code === 'EBUSY') {
+            logPlayFlow('patch locked (EBUSY); alert then launch anyway');
+            alert(`Could not apply new FPS value (${config.fps} FPS). Close all instances of the game to update FPS. The requested SWG client instance will launch with old value (${sessionLastPatchedFps} FPS) applied.`);
+            launchGame();
+            return;
         }
+
+        if (result && result.patched) {
+            sessionLastPatchedFps = Number(config.fps);
+            logPlayFlow('fps patch applied; continue launch');
+            launchGame();
+        } else {
+            sessionLastPatchedFps = Number(config.fps);
+            logPlayFlow('no patch required; continue launch');
+            launchGame();
+        }
+    }
+
+    if (desiredFps !== sessionLastPatchedFps) {
+        playBtn.innerHTML = "Applying FPS...";
+        logPlayFlow('state -> Applying FPS...');
+        logPlayFlow('waiting for exe-fps-ready event');
+        window.electronAPI.onExeFpsReady(afterPatch);
+        window.electronAPI.startPatchExeFps(desiredFps);
+    } else {
+        logPlayFlow('fps already patched this session', { desiredFps, sessionLastPatchedFps });
+        launchGame();
     }
 });
 
-ipc.on('setup-begin-install', async function (event, args) {
+// Listen for game lifecycle events
+window.electronAPI.onGameLaunched(() => {
+    logPlayFlow('event: game-launched; window opened successfully');
+    gameIsRunning = true;
+    playBtn.innerHTML = 'Play';
+    playBtn.disabled = false;
+});
+
+window.electronAPI.onGameExited(() => {
+    logPlayFlow('event: game-exited; game instance closed');
+});
+
+async function beginInstall(args) {
     playBtn.innerHTML = "Play";
     playBtn.className = "button";
     swgOptionsBtn.disabled = false;
@@ -558,43 +803,27 @@ ipc.on('setup-begin-install', async function (event, args) {
     gameDirBox.value = config.folder;
     // Cleanup
     if (args.cleanup == true) {
-        var cleanUpFile;
-        for (let file of cleanup) {
-            if (fs.existsSync(cleanUpFile = path.join(config.folder, file.name))) {
-                fs.unlink(cleanUpFile, (err) => {
-                    if (err) {
-                        console.log("Could not Delete: " + file.name);
-                        return;
-                    }
-                });
-            }
-        }
+        await window.electronAPI.cleanupFiles(config.folder, cleanup.map(file => file.name));
     }
     if (args.swgdir !== '') {
         console.log('Copying over files.');
-        install.install(args.swgdir, config.folder);
+        await window.electronAPI.startInstall(args.swgdir, false);
     }
     else {
-        install.install(config.folder, config.folder, true);
+        await window.electronAPI.startInstall(null, true);
     }
-});
+}
 
-function play() {
-    //Keeping here just in case the new system proves unreliable - needs more testing as I had some mixed results while implementing it, want to make sure its bullet proof
-    //fs.writeFileSync(path.join(config.folder, "login.cfg"), `[ClientGame]\r\nloginServerAddress0=${server[config.login][0].address}\r\nloginServerPort0=${server[config.login][0].port}\r\nfreeChaseCameraMaximumZoom=${config.zoom}`);
+window.electronAPI.onSetupBeginInstall((args) => { beginInstall(args); });
+
+async function play() {
     var args = ["--",
         "-s", "ClientGame", "loginServerAddress0=" + server[config.login][0].address, "loginServerPort0=" + server[config.login][0].port,
         "-s", "Station", "gameFeatures=34929",
         "-s", "SwgClient", "allowMultipleInstances=true"];
-    var env = Object.create(process.env);
-    env.SWGCLIENT_MEMORY_SIZE_MB = config.ram;
-    if (os.platform() === 'win32') {
-        const child = childProcess.spawn("SWGEmu.exe", args, { cwd: config.folder, env: env, detached: true, stdio: 'ignore' });
-        child.unref();
-    } else {
-        const child = childProcess.exec('wine SWGEmu.exe', { cwd: config.folder, env: env, detached: true, stdio: 'ignore' }, function (error, stdout, stderr) { });
-        child.unref();
-    }
+    logPlayFlow('spawnGame invoke', { folder: config.folder, ram: config.ram, args });
+    window.electronAPI.spawnGame(config.folder, args, config.ram);
+    logPlayFlow('spawnGame completed');
 }
 
 /*
@@ -603,13 +832,7 @@ function play() {
  * ---------------------
  */
 skillPlanner.addEventListener('click', event => {
-    if (os.platform() === 'win32') {
-        const child = childProcess.spawn("cmd", ["/c", path.join(config.folder, "KSWGProfCalcEditor.exe")], { cwd: config.folder, detached: true, stdio: 'ignore' });
-        child.unref();
-    } else {
-        const child = childProcess.exec('wine KSWGProfCalcEditor.exe', { cwd: config.folder, detached: true, stdio: 'ignore' }, function (error, stdout, stderr) { });
-        child.unref();
-    }
+    window.electronAPI.spawnExe(config.folder, 'KSWGProfCalcEditor.exe');
 });
 
 /*
@@ -618,13 +841,7 @@ skillPlanner.addEventListener('click', event => {
  * ---------------------
  */
 swgOptionsBtn.addEventListener('click', event => {
-    if (os.platform() === 'win32') {
-        const child = childProcess.spawn("cmd", ["/c", path.join(config.folder, "SWGEmu_Setup.exe")], { cwd: config.folder, detached: true, stdio: 'ignore' });
-        child.unref();
-    } else {
-        const child = childProcess.exec('wine SWGEmu_Setup.exe', { cwd: config.folder, detached: true, stdio: 'ignore' }, function (error, stdout, stderr) { });
-        child.unref();
-    }
+    window.electronAPI.spawnExe(config.folder, 'SWGEmu_Setup.exe');
 });
 
 /*
@@ -652,25 +869,25 @@ gameConfigBtn.addEventListener('click', event => {
 headerLinks.addEventListener('click', function (e) {
     e.preventDefault();
     if (e.target.classList.contains("header-link"))
-        shell.openExternal(e.target.href);
+        window.electronAPI.openExternal(e.target.href);
 });
 
 headerLinks.addEventListener('auxclick', function (e) {
     e.preventDefault();
     if (e.target.classList.contains("header-link"))
-        shell.openExternal(e.target.href);
+        window.electronAPI.openExternal(e.target.href);
 });
 
 mainButtonLinks.addEventListener('click', function (e) {
     e.preventDefault();
     if (e.target.classList.contains("button-link"))
-        shell.openExternal(e.target.href);
+        window.electronAPI.openExternal(e.target.href);
 });
 
 mainButtonLinks.addEventListener('auxclick', function (e) {
     e.preventDefault();
     if (e.target.classList.contains("button-link"))
-        shell.openExternal(e.target.href);
+    window.electronAPI.openExternal(e.target.href);
 });
 
 /*
@@ -678,26 +895,57 @@ mainButtonLinks.addEventListener('auxclick', function (e) {
  *    News & Updates View Window
  * ---------------------
  */
-newsUpdatesView.addEventListener('will-navigate', function (e) {
-    const protocol = new URL(e.url).protocol;
-    if (protocol === 'http:' || protocol === 'https:')
-        shell.openExternal(e.url);
-    newsUpdatesView.stop();
-});
+function updateNewsViewBounds() {
+    const rect = newsUpdatesView.getBoundingClientRect();
+    window.electronAPI.setNewsViewBounds({
+        x: Math.round(rect.left),
+        y: Math.round(rect.top),
+        width: Math.round(rect.width),
+        height: Math.round(rect.height)
+    });
 
-newsUpdatesView.addEventListener('dom-ready', function (e) {
+    const refreshRect = newsUpdatesRefresh.getBoundingClientRect();
+    window.electronAPI.setNewsRefreshBounds({
+        x: Math.round(refreshRect.left),
+        y: Math.round(refreshRect.top),
+        width: Math.max(1, Math.round(refreshRect.width)),
+        height: Math.max(1, Math.round(refreshRect.height)),
+    });
+}
+
+window.addEventListener('resize', updateNewsViewBounds);
+window.addEventListener('load', updateNewsViewBounds);
+setTimeout(updateNewsViewBounds, 50);
+setTimeout(updateNewsViewBounds, 350);
+if (newsUpdatesWrapper) {
+    newsUpdatesWrapper.addEventListener('mouseenter', updateNewsViewBounds);
+}
+
+window.electronAPI.onNewsViewLoaded(function () {
     newsUpdatesRefresh.className = 'news-updates-refresh hidden';
+    window.electronAPI.setNewsRefreshState('hidden');
     newsUpdatesView.style.opacity = '1';
+    updateNewsViewBounds();
     setTimeout(function () {
         newsUpdatesRefresh.disabled = false;
         newsUpdatesRefresh.className = 'news-updates-refresh';
+        window.electronAPI.setNewsRefreshState('idle');
+        updateNewsViewBounds();
     }, 2000);
+});
+
+window.electronAPI.onNewsRefreshClicked(function () {
+    newsUpdatesRefresh.disabled = true;
+    newsUpdatesRefresh.className = 'news-updates-refresh spinner';
+    window.electronAPI.setNewsRefreshState('spinner');
+    newsUpdatesView.style.opacity = '0';
 });
 
 newsUpdatesRefresh.addEventListener('click', function (e) {
     newsUpdatesRefresh.disabled = true;
     newsUpdatesRefresh.className = 'news-updates-refresh spinner';
-    newsUpdatesView.reloadIgnoringCache();
+    window.electronAPI.setNewsRefreshState('spinner');
+    window.electronAPI.reloadNewsView();
     newsUpdatesView.style.opacity = '0';
 });
 
@@ -707,34 +955,102 @@ newsUpdatesRefresh.addEventListener('click', function (e) {
  * -----------------
  */
 fpsSel.addEventListener('change', async event => {
-    const val = event.target.value;
+    const val = Number.parseInt(event.target.value, 10);
+    if (!Number.isFinite(val)) return;
     if (val > 60) {
-        await ipc.invoke('modify-cfg', getOptionsFile(), {
+        await window.electronAPI.modifyCfg(getOptionsFile(), {
             "Direct3d9": { "allowTearing": 1 }
         }, false);
     }
-    await ipc.invoke('modify-cfg', getOptionsFile(), {
+    await window.electronAPI.modifyCfg(getOptionsFile(), {
         "Direct3d9": { "fullscreenRefreshRate": val }
     }, false);
     await saveConfig({ "fps": val });
-    alert(`The first time you launch the SWG client after changing your FPS value, it will take an extended time to open the client window due to needing to edit the executable directly. Please be patient.`);
+    showFpsNotice();
 });
 ramSel.addEventListener('change', async event => {
-    await saveConfig({ "ram": event.target.value });
+    const ram = Number.parseInt(event.target.value, 10);
+    if (!Number.isFinite(ram)) return;
+    await saveConfig({ "ram": ram });
 });
-zoomSel.addEventListener('change', async event => {
-    await ipc.invoke('modify-cfg', getLoginFile(), {
-        "ClientGame": { "freeChaseCameraMaximumZoom": event.target.value }
+async function persistZoom(zoomValueNum) {
+    updateZoomDisplay(zoomValueNum);
+    zoomSel.value = String(zoomValueNum);
+    await window.electronAPI.modifyCfg(getLoginFile(), {
+        "ClientGame": { "freeChaseCameraMaximumZoom": zoomValueNum }
     }, false);
-    await saveConfig({ "zoom": event.target.value });
+    await saveConfig({ "zoom": zoomValueNum });
+}
+
+zoomSel.addEventListener('change', async event => {
+    const zoomValueNum = normalizeZoom(event.target.value);
+    await persistZoom(zoomValueNum);
 });
+
+zoomSel.addEventListener('input', event => {
+    const zoomValueNum = normalizeZoom(event.target.value);
+    updateZoomDisplay(zoomValueNum);
+});
+
+if (zoomPopoverToggle && zoomPopover) {
+    const setZoomPopoverOpen = (open) => {
+        const isOpen = Boolean(open) && !zoomPopoverToggle.disabled;
+        zoomPopover.hidden = !isOpen;
+        zoomPopoverToggle.classList.toggle('active', isOpen);
+        zoomPopoverToggle.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
+    };
+
+    const toggleZoomPopover = (event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        if (zoomPopoverToggle.disabled) return;
+        setZoomPopoverOpen(zoomPopover.hidden);
+    };
+
+    if (zoomPopoverToggle.tagName === 'SELECT') {
+        zoomPopoverToggle.addEventListener('mousedown', toggleZoomPopover);
+        zoomPopoverToggle.addEventListener('click', event => {
+            event.preventDefault();
+            event.stopPropagation();
+        });
+        zoomPopoverToggle.addEventListener('keydown', event => {
+            if (event.key === 'Enter' || event.key === ' ' || event.key === 'ArrowDown') {
+                toggleZoomPopover(event);
+            }
+        });
+    } else {
+        zoomPopoverToggle.addEventListener('click', toggleZoomPopover);
+    }
+
+    if (zoomPopoverClose) {
+        zoomPopoverClose.addEventListener('click', event => {
+            event.stopPropagation();
+            setZoomPopoverOpen(false);
+        });
+    }
+
+    zoomPopover.addEventListener('click', event => {
+        event.stopPropagation();
+    });
+
+    document.addEventListener('click', () => {
+        setZoomPopoverOpen(false);
+    });
+
+    document.addEventListener('keydown', event => {
+        if (event.key === 'Escape') setZoomPopoverOpen(false);
+    });
+}
 
 // "Change" directory button button pressed
+let gameDirSaveTimer = null;
 changeDirBtn.addEventListener('click', function (event) {
-    ipc.send('open-directory-dialog', 'selected-directory');
+    // A pending debounced save of a typed path would otherwise fire ~500ms later
+    // and clobber the folder the user is about to pick from the dialog.
+    clearTimeout(gameDirSaveTimer);
+    window.electronAPI.openDirectoryDialog('selected-directory');
 });
 
-let gameDirSaveTimer = null;
 gameDirBox.addEventListener('keyup', event => {
     clearTimeout(gameDirSaveTimer);
     const val = event.target.value;
@@ -743,15 +1059,19 @@ gameDirBox.addEventListener('keyup', event => {
     }, 500);
 });
 
-ipc.on('selected-directory', async function (event, dir) {
+window.electronAPI.onDirectorySelected(async function (dir) {
+    // Cancel any pending debounced save of a typed path so it can't overwrite the
+    // folder chosen here. Ignore a cancelled dialog (main replies null on cancel).
+    clearTimeout(gameDirSaveTimer);
+    if (!dir) return;
     configPromptClose.setAttribute("data-prompt-attr", "gameDir");
     configPromptClose.setAttribute("data-prompt-value", gameDirBox.value);
-    if (fs.existsSync(path.join(dir, 'qt-mt305.dll'))) {
+    if (await window.electronAPI.checkGameInstalled(dir)) {
         gameDirBox.value = dir;
         await saveConfig({ "folder": dir });
         toggleAll(false, true);
         resetProgress();
-        install.install(config.folder, config.folder, true);
+        await window.electronAPI.startInstall(null, true);
     } else {
         document.getElementById('gameDirPromptBox').value = dir;
         configOverlayPrompt("gameDirPrompt");
@@ -761,7 +1081,7 @@ ipc.on('selected-directory', async function (event, dir) {
 
 // Config "Run Setup" button pressed
 configSetupBtn.addEventListener('click', function (event) {
-    ipc.send('setup-game');
+    window.electronAPI.setupGame();
 });
 
 // Config "Login Server" select pressed
@@ -772,20 +1092,22 @@ loginServerSel.addEventListener('change', event => {
     helpBtn.disabled = true;
 });
 
-loginServerConfirm.addEventListener('click', function (event) {
+loginServerConfirm.addEventListener('click', async function (event) {
     config.login = loginServerSel.value;
-    (async () => {
-        await saveConfig({ "login": loginServerSel.value });
-    })();
 
-    (async () => {
-    ipc.invoke('modify-cfg', getLoginFile(), {
+    // Persist the new server selection to the launcher config BEFORE starting
+    // the install. The main process resolves which server's files to fetch from
+    // its own copy of config.login (updated asynchronously via set-launcher-config),
+    // so the install must not start until that write has landed — otherwise it
+    // runs against the previously selected server.
+    await saveConfig({ "login": loginServerSel.value });
+
+    await window.electronAPI.modifyCfg(getLoginFile(), {
             "ClientGame": {
                 "loginServerAddress0": server[config.login][0].address,
                 "loginServerPort0": server[config.login][0].port,
             }
         }, false);
-    })();
 
     loginServerSel.setAttribute("data-previous", config.login);
     activeServer.className = "no-opacity";
@@ -798,7 +1120,7 @@ loginServerConfirm.addEventListener('click', function (event) {
     getServerStatus(config.login);
     toggleAll(false, true);
     resetProgress();
-    install.install(config.folder, config.folder, true);
+    window.electronAPI.startInstall(null, true);
     configOverlayClose(false);
 });
 
@@ -824,13 +1146,17 @@ helpBtn.addEventListener('click', function (event) {
 });
 
 helpLinks.addEventListener('click', function (e) {
+    const anchor = e.target.closest('a');
+    if (!anchor) return;
     e.preventDefault();
-    shell.openExternal(e.target.href);
+    window.electronAPI.openExternal(anchor.href);
 });
 
 setupComplete.addEventListener('click', function (e) {
+    const anchor = e.target.closest('a');
+    if (!anchor) return;
     e.preventDefault();
-    shell.openExternal(e.target.href);
+    window.electronAPI.openExternal(anchor.href);
 });
 
 function configOverlayPrompt(promptID) {
@@ -874,61 +1200,161 @@ function configOverlayClose(exit) {
 let cancelledState = false;
 // Progress bar cancel button
 cancelBtn.addEventListener('click', function (event) {
-    install.cancel();
-    progressBar.style.width = '100%';
-    progressText.className = 'complete';
-    toggleAll(true);
+    window.electronAPI.cancelInstall();
     cancelledState = true;
+    networkPaused = false; // Explicit user cancel - do not auto-resume on reconnect
+    progressActive = false;
+    stopProgressAnimation();
+    resetProgress();
+    window.electronAPI.clearInstallResumeState();
+    progressText.className = 'active';
+    progressText.innerHTML = 'Patch canceled.';
+    toggleAll(true);
 })
 
-ipc.on('downloading-update', function (event, text) {
+window.electronAPI.onDownloadingUpdate(function (text) {
     versionDiv.innerHTML = text;
     toggleAll(false);
 });
 
-ipc.on('download-progress', function (event, info) {
-    install.progress(info.transferred, info.total);
-})
+window.electronAPI.onDownloadProgress(function (info) {
+    progressUpdate(info.transferred, info.total);
+});
+
+window.electronAPI.onInstallProgress(function (completed, total) {
+    progressUpdate(completed, total);
+});
+
+window.electronAPI.onInstallError(function (message) {
+    progressActive = false;
+    stopProgressAnimation();
+    progressText.className = 'active';
+    const text = String(message || 'Unknown error');
+    if (text.toLowerCase().includes('network interruption')) {
+        progressText.innerHTML = 'Patch paused: network interruption. Reconnect to resume.';
+        cancelledState = true;
+        networkPaused = true;
+        toggleAll(false, true);
+        return;
+    }
+    progressText.innerHTML = 'Install failed: ' + text;
+    toggleAll(true);
+    cancelledState = true;
+});
 
 var lastCompleted = 0;
 var lastTime = new Date();
-var rate = 0;
-var units = " B/s";
+var smoothedRateBps = 0;
+var targetPercent = 0;
+var displayedPercent = 0;
+var progressAnimationFrame = null;
+var progressActive = false;
+
+function formatRate(bps) {
+    var rate = Math.max(0, bps);
+    var units = ' B/s';
+    if (rate > 1024) {
+        rate = rate / 1024;
+        units = ' KB/s';
+    }
+    if (rate > 1024) {
+        rate = rate / 1024;
+        units = ' MB/s';
+    }
+    if (!Number.isFinite(rate)) {
+        return '0 B/s';
+    }
+    return parseFloat(rate.toPrecision(3)) + units;
+}
+
+function stopProgressAnimation() {
+    if (progressAnimationFrame !== null) {
+        cancelAnimationFrame(progressAnimationFrame);
+        progressAnimationFrame = null;
+    }
+}
+
+function renderProgress() {
+    var delta = targetPercent - displayedPercent;
+    if (Math.abs(delta) < 0.05) {
+        displayedPercent = targetPercent;
+    } else {
+        // Ease toward target so bursty backend updates appear smoother.
+        displayedPercent += delta * 0.2;
+    }
+
+    var safePercent = Math.max(0, Math.min(100, displayedPercent));
+    progressBar.style.width = safePercent + '%';
+
+    if (navigator.onLine) {
+        progressText.innerHTML = Math.trunc(safePercent) + '% (' + formatRate(smoothedRateBps) + ')';
+    }
+
+    if (progressActive || Math.abs(targetPercent - displayedPercent) >= 0.05) {
+        progressAnimationFrame = requestAnimationFrame(renderProgress);
+    } else {
+        progressAnimationFrame = null;
+    }
+}
+
+function ensureProgressAnimation() {
+    if (progressAnimationFrame === null) {
+        progressAnimationFrame = requestAnimationFrame(renderProgress);
+    }
+}
 
 function resetProgress() {
     lastCompleted = 0;
     lastTime = new Date();
-    rate = 0;
+    smoothedRateBps = 0;
+    targetPercent = 0;
+    displayedPercent = 0;
+    progressActive = false;
+    stopProgressAnimation();
+    progressBar.style.width = '0%';
 }
 
-install.progress = function (completed, total) {
+function progressUpdate(completed, total) {
+    // Late progress events can arrive briefly after cancel; ignore those.
+    if (cancelledState && cancelBtn.disabled) {
+        return;
+    }
+
+    if (!Number.isFinite(completed) || !Number.isFinite(total) || total <= 0) {
+        console.warn('[PATCH PROGRESS] Invalid progress payload:', { completed, total });
+        return;
+    }
+
+    if (completed < total) {
+        cancelledState = false;
+        toggleAll(false, true);
+        progressActive = true;
+    }
+
     var time = new Date();
     var elapsed = (time - lastTime) / 1000;
-    if (elapsed >= 1) {
+    if (elapsed >= 0.25) {
         var bytes = completed - lastCompleted;
-        units = " B/s";
-        rate = bytes / elapsed;
-        if (rate > 1024) {
-            rate = rate / 1024;
-            units = " KB/s";
-        }
-        if (rate > 1024) {
-            rate = rate / 1024;
-            units = " MB/s";
-        }
+        var instantRateBps = Math.max(0, bytes / elapsed);
+        var alpha = 0.25;
+        smoothedRateBps = smoothedRateBps === 0
+            ? instantRateBps
+            : alpha * instantRateBps + (1 - alpha) * smoothedRateBps;
         lastCompleted = completed;
         lastTime = time;
     }
+
+    targetPercent = Math.max(0, Math.min(100, (completed * 100 / total)));
+
     if (progressText.className == 'complete') progressText.className = 'active';
-    if (navigator.onLine) {
-        progressText.innerHTML = Math.trunc(completed * 100 / total) + '% (' + parseFloat(rate.toPrecision(3)) + units + ')';
-        progressBar.style.width = (completed * 100 / total) + '%';
-    } else {
-        progressText.innerHTML = "Network Error: File operation failed";
-        progressBar.style.width = '0%';
-        cancelledState = true;
-    }
+    // Do not check navigator.onLine here - handleDisconnect owns the offline transition
+    // and sets networkPaused correctly. An inline check here races against it, wiping
+    // the progress bar and setting cancelledState without setting networkPaused.
+    ensureProgressAnimation();
     if (completed == total && navigator.onLine) {
+        progressActive = false;
+        targetPercent = 100;
+        ensureProgressAnimation();
         toggleAll(true)
         progressText.className = 'complete';
         cancelledState = false;
@@ -944,7 +1370,7 @@ function verifyFiles() {
     if (verifyBtn.disabled) return;
     toggleAll(false, true);
     resetProgress();
-    install.install(config.folder, config.folder, true);
+    window.electronAPI.startInstall(null, true);
 }
 
 // Ensure this block only runs after config is loaded
@@ -953,10 +1379,10 @@ function verifyFiles() {
     // Enable play, game config, and swg options buttons after config is ready
     gameConfigBtn.disabled = false;
     swgOptionsBtn.disabled = false;
-    if (fs.existsSync(path.join(config.folder, 'qt-mt305.dll'))) {
+    if (await window.electronAPI.checkGameInstalled(config.folder)) {
         toggleAll(false, true);
         resetProgress();
-        install.install(config.folder, config.folder, true);
+        await window.electronAPI.startInstall(null, true);
     } else {
         console.log("First Run");
         progressText.innerHTML = "Click the SETUP button to get started.";
@@ -974,6 +1400,7 @@ function verifyFiles() {
         ramSel.disabled = true;
         fpsSel.disabled = true;
         zoomSel.disabled = true;
+        if (zoomPopoverToggle) zoomPopoverToggle.disabled = true;
     }
 })();
 
@@ -985,9 +1412,15 @@ function toggleAll(enable, cancel = false) {
     loginServerSel.disabled = !enable;
     loginServerConfirm.disabled = !enable;
     helpBtn.disabled = !enable;
+    swgOptionsBtn.disabled = !enable;
     ramSel.disabled = !enable;
     fpsSel.disabled = !enable;
     zoomSel.disabled = !enable;
+    if (zoomPopoverToggle) zoomPopoverToggle.disabled = !enable;
+    if (!enable && zoomPopover) {
+        zoomPopover.hidden = true;
+        if (zoomPopoverToggle) zoomPopoverToggle.classList.remove('active');
+    }
     skillPlanner.disabled = !enable;
 
 
@@ -1011,15 +1444,29 @@ window.addEventListener('online', handleReconnect);
 window.addEventListener('offline', handleDisconnect);
 
 let isDisconnected = false;
+// Distinct from cancelledState: only true when a network drop paused an active install.
+// Prevents reconnect from resuming a user-cancelled or never-started install.
+let networkPaused = false;
+// Guard against multiple rapid 'online' events starting concurrent resumes.
+let isResuming = false;
 
 function handleDisconnect() {
     console.warn("[NETWORK] Disconnected from internet.");
     isDisconnected = true;
 
-    if (cancelledState === true) {
-        cancelledState = false
+    // cancelBtn is only enabled while patching is actively running (set by toggleAll(false, true)).
+    // Using this is more reliable than className which is also 'active' in error/failed states.
+    if (cancelBtn.disabled === false) {
+        console.warn('[NETWORK] Pausing install due to network disconnection');
+        window.electronAPI.cancelInstall();
+        progressActive = false;
+        stopProgressAnimation();
+        progressText.className = 'active';
+        progressText.innerHTML = 'Patch paused: network disconnected. Reconnect to resume.';
+        cancelledState = true;
+        networkPaused = true;
+        toggleAll(false, true);
     }
-
 }
 
 if (!navigator.onLine) {
@@ -1032,24 +1479,37 @@ async function handleReconnect() {
     console.log("[NETWORK] Reconnected to internet.");
     isDisconnected = false;
 
-    // window.location.reload(); // Full reload if necessary
     await configReady;
-    await getServerStatus(config.login); // Retry status fetch
-    newsUpdatesView.reloadIgnoringCache(); // Reload news and updates feed
+    await getServerStatus(config.login);
+    window.electronAPI.reloadNewsView();
 
-    if (
-        cancelledState === true ||
-        progressText.className === 'active' ||
-        cancelBtn.disabled === false
-    ) {
-        install.cancel();
+    // Only resume if a network drop specifically paused an active install,
+    // not a user-initiated cancel or an install that was never running.
+    if (!networkPaused || isResuming) return;
 
-        // Pause for 1 second
-        await new Promise(resolve => setTimeout(resolve, 1000));
+    isResuming = true;
+    try {
+        console.log('[NETWORK] Attempting to resume network-paused install');
 
+        progressActive = false;
+        stopProgressAnimation();
+        progressText.className = 'active';
+        progressText.innerHTML = 'Patch resuming: re-validating files and resuming download...';
         toggleAll(false, true);
-        resetProgress();
-        install.install(config.folder, config.folder, true);
+
+        // Wait briefly for connection to stabilize before restarting workers
+        await new Promise(resolve => setTimeout(resolve, 500));
+
+        // Clear networkPaused only immediately before starting - if anything above throws,
+        // networkPaused stays true so the next reconnect event can retry.
+        networkPaused = false;
+        await window.electronAPI.startInstall(null, false, true);
+    } catch (err) {
+        // Restore networkPaused so the next reconnect can attempt resume again
+        networkPaused = true;
+        console.error('[NETWORK] Resume attempt failed, will retry on next reconnect:', err);
+    } finally {
+        isResuming = false;
     }
 }
 
@@ -1059,4 +1519,4 @@ async function handleReconnect() {
  *    Launcher Debug
  * ---------------------
  */
-versionDiv.addEventListener('click', event => ipc.send('window-toggle-devtools'));
+versionDiv.addEventListener('click', () => window.electronAPI.toggleDevTools());

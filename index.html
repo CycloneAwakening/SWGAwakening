@@ -3,6 +3,7 @@
 
 <head>
     <meta charset="UTF-8">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self' data:; media-src 'self' data:; connect-src 'self' https://swgawakening.com https://*.swgawakening.com http://patcher.swgawakening.com; object-src 'none'; base-uri 'self'; form-action 'self';">
     <title>SWG Awakening Launcher</title>
     <link rel="stylesheet" href="./styles.css" type="text/css" />
     <style>
@@ -41,8 +42,7 @@
                 <div class="left-section">
                     <div class="news-updates-wrapper">
                         <button id="newsUpdatesRefresh" class="news-updates-refresh"></button>
-                        <webview id="newsUpdatesView" class="news-updates-view"
-                            src="https://swgawakening.com/launcher-home.php"></webview>
+                        <div id="newsUpdatesView" class="news-updates-view"></div>
                     </div>
                     <div class="donation-stats-wrapper">
                         <div id="donationtext">Trying to Retrieve Donation Information...</div>
@@ -52,6 +52,15 @@
                     </div>
                 </div>
                 <div class="right-section">
+                    <div id="fpsNoticePanel" class="fps-notice-panel" style="display:none;" role="status" aria-live="polite">
+                        <div class="fps-notice-header">
+                            FPS Change
+                            <button id="fpsNoticeClose" class="fps-notice-close" aria-label="Dismiss FPS notice"></button>
+                        </div>
+                        <div class="fps-notice-body">
+                            The first launch after an FPS change can take longer while the launcher updates the client executable. Please be patient.
+                        </div>
+                    </div>
                     <div class="config-section-container">
                         <div id="configSection" style="display:none">
                             <div id="configPromptOverlay" class="config-prompt-overlay" style="display:none">
@@ -291,13 +300,28 @@
                                             </div>
                                             <div class="column col-2 col-spacer-6">
                                                 <div class="config-label-sm">Zoom</div>
-                                                <select id="zoom" class="full-width">
-                                                    <option value="1">1 (default)</option>
-                                                    <option value="3">3</option>
-                                                    <option value="5">5 (med)</option>
-                                                    <option value="7">7</option>
-                                                    <option value="10">10 (far)</option>
-                                                </select>
+                                                <div class="zoom-control full-width">
+                                                    <select id="zoomPopoverToggle" class="full-width zoom-popover-toggle" aria-label="Zoom quick control">
+                                                        <option value="1">1 (DEFAULT)</option>
+                                                    </select>
+                                                    <div id="zoomPopover" class="zoom-popover" hidden>
+                                                        <div class="zoom-popover-header">
+                                                            <span class="zoom-popover-title">Camera Zoom</span>
+                                                            <button id="zoomPopoverClose" type="button" class="zoom-popover-close" aria-label="Close zoom controls">X</button>
+                                                        </div>
+                                                        <div class="zoom-slider-row">
+                                                            <span class="zoom-end-number">1</span>
+                                                            <input id="zoom" type="range" min="1" max="10" step="1" value="1" class="zoom-slider" />
+                                                            <span class="zoom-end-number zoom-end-right">10</span>
+                                                        </div>
+                                                        <div class="zoom-slider-label-row">
+                                                            <span class="zoom-end-label">Near</span>
+                                                            <span class="zoom-label-spacer"></span>
+                                                            <span class="zoom-end-label zoom-end-right">Far</span>
+                                                        </div>
+                                                        <div id="zoomValue" class="zoom-value">Zoom: 1 (NEAR)</div>
+                                                    </div>
+                                                </div>
                                             </div>
                                         </div>
                                         <hr>
@@ -359,10 +383,9 @@
             </div>
         </div>
     </div>
+
 </body>
 
-<script>
-    require('./renderer.js')
-</script>
+<script src="./renderer.js"></script>
 
 </html>

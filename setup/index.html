@@ -2,6 +2,8 @@
 <html>
 
 <head>
+    <meta charset="UTF-8">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self' data:; media-src 'self' data:; connect-src 'self' https://swgawakening.com https://*.swgawakening.com http://patcher.swgawakening.com; object-src 'none'; base-uri 'self'; form-action 'self';">
     <title>Setup</title>
     <link rel="stylesheet" href="styles.css" type="text/css" />
 </head>
@@ -22,7 +24,7 @@
                                 files</strong> installation process.</p>
                     </div>
                     <div id="sidebarLinks">
-                        <p><b><u>Useful Links</u></b></p>
+                        <p class="sidebar-links-heading">Useful Links</p>
                         <a href="https://swgawakening.com/ucp.php?mode=register" class="sidebar-link">Create an
                             Awakening Forum &amp; Game Account</a>
                         <a href="https://swgawakening.com/viewforum.php?f=97" class="sidebar-link">Support / Help
@@ -41,17 +43,18 @@
                     <p id="ToSReadOnline" class="config-label">Terms of Service - <a
                             href="https://swgawakening.com/ucp.php?mode=terms">Read Online</a></p>
                     <div class="rules-reg-wrapper">
-                        <webview id="rulesRegView" class="rules-reg-view" src="https://swgawakening.com/launcher-terms.php"></webview>
+                        <div id="rulesRegView" class="rules-reg-view"></div>
+                        <button id="rulesRefresh" class="rules-refresh hidden" aria-label="Refresh terms"></button>
                     </div>
                     <div class="rules-terms-checkboxes">
                         <div class="swga-checkbox">
                             <input type="checkbox" id="agreeRules" name="agreeRules" value="agreed">
-                            <label for="agreeRules">I agree to the server terms of service.</label>
+                            <label for="agreeRules">I agree to the server Terms of Service.</label>
                         </div>
                     </div>
                     <div class="foot-notes">
                         <hr>
-                        <p>Once you have read and agreed to our terms of service, select the <strong>Next</strong>
+                        <p>Once you have read and agreed to our Terms of Service, select the <strong>Next</strong>
                             button.</p>
                     </div>
                 </div>
@@ -167,16 +170,16 @@
                 <div id="setup-nav">
                     <div class="row">
                         <div class="column col-3">
+                            <button id="setupCancel"
+                                class="swga-button swga-btn-icon swga-btn-icon-left">Cancel</button>
+                        </div>
+                        <div class="column col-3">
                             <button id="setupPrev" class="swga-button swga-btn-icon swga-btn-icon-left"
-                                style="display:none">Previous</button>
+                                style="visibility:hidden">Previous</button>
                         </div>
                         <div class="column col-3">
                             <button id="setupNext" class="swga-button swga-btn-icon swga-btn-icon-right"
                                 disabled>Next</button>
-                        </div>
-                        <div class="column col-3">
-                            <button id="setupCancel"
-                                class="swga-button swga-btn-icon swga-btn-icon-left">Cancel</button>
                         </div>
                     </div>
                 </div>
@@ -198,8 +201,6 @@
 
 
 </body>
-<script>
-    require('./setup.js')
-</script>
+<script src="./setup.js"></script>
 
 </html>

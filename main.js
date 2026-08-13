@@ -1,13 +1,79 @@
-const { app, BrowserWindow, ipcMain, dialog } = require('electron');
+const { app, BrowserWindow, WebContentsView, ipcMain, dialog, shell } = require('electron');
 const log = require('electron-log');
 const { autoUpdater } = require('electron-updater');
 const path = require('path');
-const url = require('url');
+const { pathToFileURL } = require('url');
 const fs = require('fs');
 const lockfile = require('proper-lockfile');
 const isDev = require('electron-is-dev');
-const discordRPC = require('discord-rpc');
+const { Client: DiscordRpcClient } = require('@xhayper/discord-rpc');
 const discordRPCConfig = require('./json/discordrpc');
+
+const LAUNCHER_DEVICE_SCALE_FACTOR = '1.22';
+app.commandLine.appendSwitch('force-device-scale-factor', LAUNCHER_DEVICE_SCALE_FACTOR);
+
+process.on('uncaughtException', (error) => {
+    console.error('[MAIN] uncaughtException:', error);
+});
+
+process.on('unhandledRejection', (reason) => {
+    console.error('[MAIN] unhandledRejection:', reason);
+});
+
+// ── Main-process console forwarding to renderer DevTools ──────────────────────
+// Mirrors console.log/info/warn/error from the main process into the main
+// window's DevTools console (each line prefixed with [MAIN]). Anything logged
+// before the renderer is ready is buffered and flushed on did-finish-load.
+// rawConsole preserves the original methods for terminal output and to break the
+// renderer->main->renderer feedback loop (see the console-message handler).
+let mainWindow = null;
+const rawConsole = {
+    log:   console.log.bind(console),
+    info:  console.info.bind(console),
+    warn:  console.warn.bind(console),
+    error: console.error.bind(console),
+};
+const mainLogBuffer = [];
+const MAIN_LOG_BUFFER_MAX = 500;
+let mainLogReady = false;
+
+function forwardMainLog(level, args) {
+    let text;
+    try {
+        text = args.map((a) =>
+            typeof a === 'string' ? a
+            : a instanceof Error ? (a.stack || a.message)
+            : JSON.stringify(a)
+        ).join(' ');
+    } catch (e) {
+        text = args.map(String).join(' ');
+    }
+    const payload = { level, text };
+
+    const wc = mainWindow && !mainWindow.isDestroyed() ? mainWindow.webContents : null;
+    if (!mainLogReady || !wc || wc.isDestroyed()) {
+        mainLogBuffer.push(payload);
+        if (mainLogBuffer.length > MAIN_LOG_BUFFER_MAX) mainLogBuffer.shift();
+        return;
+    }
+    try { wc.send('main-console', payload); } catch (e) { /* window torn down */ }
+}
+
+['log', 'info', 'warn', 'error'].forEach((method) => {
+    console[method] = (...args) => {
+        rawConsole[method](...args);
+        forwardMainLog(method, args);
+    };
+});
+
+function flushMainLogBuffer() {
+    const wc = mainWindow && !mainWindow.isDestroyed() ? mainWindow.webContents : null;
+    if (!wc || wc.isDestroyed()) return;
+    mainLogReady = true;
+    while (mainLogBuffer.length) {
+        try { wc.send('main-console', mainLogBuffer.shift()); } catch (e) { /* window torn down */ }
+    }
+}
 
 const clientId = discordRPCConfig.clientid;
 
@@ -206,9 +272,54 @@ autoUpdater.logger.transports.file.level = 'info';
 if (err !== undefined)
     log.info(err);
 
-let mainWindow;
+// mainWindow is declared near the top (console-forwarding block).
+let newsView = null;
+let newsRefreshView = null;
+let newsRefreshState = 'hidden';
+let rulesRefreshView = null;
+let rulesRefreshState = 'hidden';
+let rulesViewVisible = true;
+
+function applyRulesRefreshStateToOverlay() {
+    if (!rulesRefreshView || rulesRefreshView.webContents.isDestroyed()) return;
+    const state = String(rulesRefreshState || 'hidden');
+    rulesRefreshView.webContents.executeJavaScript(`window.__setRefreshState && window.__setRefreshState(${JSON.stringify(state)});`, true).catch(() => {});
+}
+
+function applyNewsRefreshStateToOverlay() {
+    if (!newsRefreshView || newsRefreshView.webContents.isDestroyed()) return;
+    const state = String(newsRefreshState || 'hidden');
+    newsRefreshView.webContents.executeJavaScript(`window.__setRefreshState && window.__setRefreshState(${JSON.stringify(state)});`, true).catch(() => {});
+}
+
+function attachExternalNavigationPolicy(viewWebContents) {
+    if (!viewWebContents) return;
+
+    const openExternalSafe = (url) => {
+        try {
+            if (typeof url === 'string' && /^https?:\/\//i.test(url)) {
+                shell.openExternal(url);
+            }
+        } catch (e) {
+            console.warn('[WEB VIEW] Failed to open external URL:', url);
+        }
+    };
+
+    // Covers in-page navigations, redirects, and link clicks.
+    viewWebContents.on('will-navigate', (event, navUrl) => {
+        event.preventDefault();
+        openExternalSafe(navUrl);
+    });
+
+    // Covers target="_blank" and window.open().
+    viewWebContents.setWindowOpenHandler(({ url }) => {
+        openExternalSafe(url);
+        return { action: 'deny' };
+    });
+}
 
 function createWindow() {
+    console.info('[WINDOW] createWindow() called');
     mainWindow = new BrowserWindow({
         width: 1096,
         height: 602,
@@ -229,34 +340,129 @@ function createWindow() {
         frame: false,
         roundedCorners: false,
         webPreferences: {
-            disableBlinkFeatures: "Auxclick",
-            nodeIntegration: true,
-            contextIsolation: false,
-            webviewTag: true
+            disableBlinkFeatures: 'Auxclick',
+            nodeIntegration: false,
+            contextIsolation: true,
+            sandbox: false,
+            preload: path.join(__dirname, 'preload.js')
         },
         icon: path.join(__dirname, 'img/launcher-icon.ico')
     });
-    mainWindow.loadURL(url.format({
-        pathname: path.join(__dirname, 'index.html'),
-        protocol: 'file:',
-        slashes: true
-    }));
-    /* FOR FUTURE USE IF ELECTRON FORCES USE OF BROWSERVIEW - THIS IS NOW DEPRECATED USE WEBCONTENTSVIEW
-    const feed = new BrowserView()
-    mainWindow.setBrowserView(feed)
-    feed.setBounds({ 
-       x: 37,
-       y: 136, 
-       width: 406, 
-       height: 320 
-   });
-   feed.webContents.loadURL('https://swgawakening.com/launcher-home.php')
-   */
+    mainWindow.loadFile(path.join(__dirname, 'index.html'));
 
+    // Flush any main-process logs buffered before the renderer was ready, and
+    // keep forwarding live once the DevTools console can receive them.
+    mainWindow.webContents.on('did-finish-load', flushMainLogBuffer);
 
-    //if (isDev) mainWindow.webContents.openDevTools();
-    mainWindow.once('ready-to-show', () => mainWindow.show());
-    mainWindow.once('closed', () => mainWindow = null);
+    if (isDev) {
+        mainWindow.webContents.openDevTools({ mode: 'detach' });
+    }
+
+    // If first paint stalls, still show the window so the app is usable.
+    const showFallbackTimer = setTimeout(() => {
+        if (mainWindow && !mainWindow.isDestroyed() && !mainWindow.isVisible()) {
+            console.warn('[WINDOW] ready-to-show timeout; forcing window show.');
+            mainWindow.show();
+        }
+    }, 4000);
+
+    // ── News / updates WebContentsView ──────────────────────────────────────
+    newsView = new WebContentsView({
+        webPreferences: { nodeIntegration: false, contextIsolation: true, sandbox: true }
+    });
+    mainWindow.contentView.addChildView(newsView);
+    newsView.webContents.loadURL('https://swgawakening.com/launcher-home.php');
+    attachExternalNavigationPolicy(newsView.webContents);
+
+    newsRefreshView = new WebContentsView({
+        webPreferences: { nodeIntegration: false, contextIsolation: true, sandbox: true }
+    });
+    mainWindow.contentView.addChildView(newsRefreshView);
+    newsRefreshView.setBackgroundColor('#00000000');
+    const refreshIconPath = path.join(__dirname, 'img', 'buttons', 'btn-refresh.png');
+    let refreshIconDataUrl = '';
+    try {
+        const refreshIconBase64 = fs.readFileSync(refreshIconPath).toString('base64');
+        refreshIconDataUrl = `data:image/png;base64,${refreshIconBase64}`;
+    } catch (err) {
+        console.warn('[NEWS REFRESH] Could not load refresh icon for overlay:', err && err.message ? err.message : err);
+    }
+    const refreshButtonStyle = refreshIconDataUrl
+        ? `background:transparent url('${refreshIconDataUrl}') center center / 18px 18px no-repeat;`
+        : `background:transparent;`;
+    const refreshOverlayHtml = `<!doctype html><html><head><meta charset="utf-8"><style>html,body{margin:0;padding:0;width:100%;height:100%;background:transparent;overflow:hidden}button{width:100%;height:100%;border:0;${refreshButtonStyle}color:#fff;font-size:13px;cursor:pointer;opacity:0}button::before{content:'↻';display:${refreshIconDataUrl ? 'none' : 'block'};line-height:16px;text-align:center}button.idle{opacity:.55}button.idle:hover{opacity:.85}button.spinner{opacity:.85;cursor:default;animation:swgaSpin 0.9s linear infinite}button.hidden{opacity:0;cursor:default}@keyframes swgaSpin{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}</style></head><body><button id="refreshBtn" class="hidden" aria-label="Refresh news" onclick="if(!this.classList.contains('spinner')) location.href='swga-refresh://reload'; return false;"></button><script>window.__setRefreshState=function(state){var btn=document.getElementById('refreshBtn');if(!btn)return;btn.className='';if(state==='spinner')btn.classList.add('spinner');else if(state==='idle')btn.classList.add('idle');else btn.classList.add('hidden');};</script></body></html>`;
+    newsRefreshView.webContents.loadURL(`data:text/html;charset=UTF-8,${encodeURIComponent(refreshOverlayHtml)}`);
+    newsRefreshView.webContents.on('did-finish-load', () => {
+        applyNewsRefreshStateToOverlay();
+    });
+    newsRefreshView.webContents.on('will-navigate', (event, navUrl) => {
+        event.preventDefault();
+        if (typeof navUrl === 'string' && navUrl.startsWith('swga-refresh://reload')) {
+            if (newsView) newsView.webContents.reloadIgnoringCache();
+            if (mainWindow && !mainWindow.isDestroyed()) {
+                mainWindow.webContents.send('news-refresh-clicked');
+            }
+        }
+    });
+    newsRefreshView.webContents.setWindowOpenHandler(() => {
+        return { action: 'deny' };
+    });
+
+    newsView.webContents.on('did-finish-load', () => {
+        if (mainWindow && !mainWindow.isDestroyed()) {
+            mainWindow.webContents.send('news-view-loaded');
+        }
+    });
+
+    newsView.webContents.on('did-fail-load', (_event, errorCode, errorDescription, validatedURL) => {
+        console.warn('[NEWS VIEW] did-fail-load', { errorCode, errorDescription, validatedURL });
+    });
+
+    mainWindow.webContents.on('did-fail-load', (_event, errorCode, errorDescription, validatedURL) => {
+        console.error('[WINDOW] did-fail-load', { errorCode, errorDescription, validatedURL });
+    });
+
+    mainWindow.webContents.on('console-message', (_event, ...args) => {
+        let level;
+        let message;
+        let line;
+        let sourceId;
+
+        if (args.length === 1 && args[0] && typeof args[0] === 'object') {
+            ({ level, message, line, sourceId } = args[0]);
+        } else {
+            [level, message, line, sourceId] = args;
+        }
+
+        // Skip our own forwarded [MAIN] logs: they already originated in the
+        // main process (and were printed to the terminal via rawConsole), so
+        // re-logging them here would duplicate output and, because these
+        // console methods are wrapped, feed them back to the renderer forever.
+        if (typeof message === 'string' && message.startsWith('[MAIN]')) return;
+
+        rawConsole.log(`[RENDERER CONSOLE L${level}] ${message} (${sourceId}:${line})`);
+    });
+
+    mainWindow.webContents.on('render-process-gone', (_event, details) => {
+        console.error('[WINDOW] render-process-gone', details);
+    });
+
+    mainWindow.on('unresponsive', () => {
+        console.error('[WINDOW] main window became unresponsive');
+    });
+
+    mainWindow.once('ready-to-show', () => {
+        clearTimeout(showFallbackTimer);
+        console.info('[WINDOW] ready-to-show');
+        mainWindow.show();
+    });
+    mainWindow.once('closed', () => {
+        clearTimeout(showFallbackTimer);
+        console.info('[WINDOW] closed');
+        mainWindow = null;
+        newsView = null;
+        newsRefreshView = null;
+    });
 }
 
 ipcMain.on('window-minimize', (event) => {
@@ -277,17 +483,16 @@ ipcMain.handle('get-user-data-path', () => app.getPath('userData'));
 app.on('ready', () => setTimeout(createWindow, 100)); // Linux / MacOS transparancy fix
 app.on('window-all-closed', () => app.quit());
 
-discordRPC.register(clientId);
-
-const rpc = new discordRPC.Client({ transport: 'ipc' });
+let rpc = null;
+let rpcActivityTimer = null;
 const startTimestamp = new Date();
 
 async function setActivity() {
-    if (!rpc || !mainWindow) {
+    if (!rpc || !mainWindow || !rpc.user) {
         return;
     }
 
-    rpc.setActivity({
+    rpc.user.setActivity({
         details: discordRPCConfig.details,
         state: discordRPCConfig.state,
         startTimestamp,
@@ -299,25 +504,51 @@ async function setActivity() {
     });
 }
 
-rpc.on('ready', () => {
-    setActivity();
+function initDiscordRpc() {
+    try {
+        rpc = new DiscordRpcClient({ clientId });
 
-    //activity can only be set every 15 seconds
-    setInterval(() => {
-        setActivity();
-    }, 15e3);
-});
+        rpc.on('ready', () => {
+            setActivity();
 
-rpc.login({ clientId }).catch(console.error);
+            // Activity can only be set every 15 seconds.
+            if (!rpcActivityTimer) {
+                rpcActivityTimer = setInterval(() => {
+                    setActivity();
+                }, 15e3);
+            }
+        });
+
+        rpc.on('disconnected', () => {
+            if (rpcActivityTimer) {
+                clearInterval(rpcActivityTimer);
+                rpcActivityTimer = null;
+            }
+        });
+
+        // Do not await; keep startup non-blocking.
+        rpc.login().catch((e) => {
+            console.warn('[DISCORD RPC] Login failed:', e && e.message ? e.message : e);
+        });
+    } catch (e) {
+        console.warn('[DISCORD RPC] Init failed:', e && e.message ? e.message : e);
+    }
+}
 
 ipcMain.on('open-directory-dialog', async (event, response) => {
     const result = await dialog.showOpenDialog({
         properties: ['openDirectory']
     });
-    if (result.filePaths[0] != undefined) {
-        event.sender.send(response, result.filePaths[0]);
+    // Always reply — send null when the user cancels — so renderers that guard a
+    // "busy" flag on this reply (e.g. the setup window's install button) don't
+    // get stuck waiting for a message that never arrives.
+    const selectedPath = (!result.canceled && result.filePaths && result.filePaths[0])
+        ? result.filePaths[0]
+        : null;
+    if (!event.sender.isDestroyed()) {
+        event.sender.send(response, selectedPath);
     }
-    log.info('Selected Directory Path', result.filePaths[0]);
+    log.info('Selected Directory Path', selectedPath);
 });
 
 
@@ -345,52 +576,25 @@ function deepMergePatch(target, patch) {
 async function processConfigQueue() {
     if (configUpdateInProgress) return;
     configUpdateInProgress = true;
-    while (configUpdateQueue.length > 0) {
-        const nextUpdate = configUpdateQueue.shift();
-        try {
-            let diskConfig = {};
-            if (fs.existsSync(configFile)) {
-                try {
-                    diskConfig = JSON.parse(fs.readFileSync(configFile));
-                } catch (e) {
-                    console.error('[LAUNCHER CONFIG] Failed to load config from disk (queue):', e);
-                }
+    try {
+        while (configUpdateQueue.length > 0) {
+            const nextUpdate = configUpdateQueue.shift();
+            if (!nextUpdate || typeof nextUpdate !== 'object') {
+                console.warn('[LAUNCHER CONFIG] Skipping malformed queue item.');
+                continue;
             }
-            if (nextUpdate.patch) {
-                const mergedConfig = deepMergePatch(diskConfig, nextUpdate.patch);
-                let release;
-                try {
-                    if (!fs.existsSync(configFile)) {
-                        fs.writeFileSync(configFile, '{}');
-                    }
-                    release = await lockfile.lock(configFile, {
-                        retries: {
-                            retries: 5,
-                            factor: 2,
-                            minTimeout: 1 * 1000,
-                            maxTimeout: 2 * 1000,
-                            randomize: false,
-                        }
-                    });
-                    console.info(`[LAUNCHER CONFIG] Saving merged config (patch):\n ${JSON.stringify(mergedConfig)}`);
-                    fs.writeFileSync(configFile, JSON.stringify(mergedConfig));
-                    config = mergedConfig;
-                    if (nextUpdate.resolve) nextUpdate.resolve(true);
-                } catch (err) {
-                    console.error(`[LAUNCHER CONFIG] Error (patch): ${err.message}`);
-                    if (nextUpdate.reject) nextUpdate.reject(err);
-                } finally {
-                    if (release) await release();
-                }
-            } else if (nextUpdate.deleteKeys) {
-                let changed = false;
-                for (const key of nextUpdate.deleteKeys) {
-                    if (key in diskConfig) {
-                        delete diskConfig[key];
-                        changed = true;
+
+            try {
+                let diskConfig = {};
+                if (fs.existsSync(configFile)) {
+                    try {
+                        diskConfig = JSON.parse(fs.readFileSync(configFile, 'utf-8'));
+                    } catch (e) {
+                        console.error('[LAUNCHER CONFIG] Failed to load config from disk (queue):', e);
                     }
                 }
-                if (changed) {
+                if (nextUpdate.patch) {
+                    const mergedConfig = deepMergePatch(diskConfig, nextUpdate.patch);
                     let release;
                     try {
                         if (!fs.existsSync(configFile)) {
@@ -405,21 +609,59 @@ async function processConfigQueue() {
                                 randomize: false,
                             }
                         });
-                        fs.writeFileSync(configFile, JSON.stringify(diskConfig));
-                        config = diskConfig;
+                        console.info(`[LAUNCHER CONFIG] Saving merged config (patch):\n ${JSON.stringify(mergedConfig)}`);
+                        fs.writeFileSync(configFile, JSON.stringify(mergedConfig));
+                        config = mergedConfig;
+                        if (nextUpdate.resolve) nextUpdate.resolve(true);
                     } catch (err) {
-                        console.error(`[LAUNCHER CONFIG] Error (delete): ${err.message}`);
+                        console.error(`[LAUNCHER CONFIG] Error (patch): ${err.message}`);
+                        if (nextUpdate.reject) nextUpdate.reject(err);
                     } finally {
                         if (release) await release();
                     }
+                } else if (nextUpdate.deleteKeys) {
+                    let changed = false;
+                    for (const key of nextUpdate.deleteKeys) {
+                        if (key in diskConfig) {
+                            delete diskConfig[key];
+                            changed = true;
+                        }
+                    }
+                    if (changed) {
+                        let release;
+                        try {
+                            if (!fs.existsSync(configFile)) {
+                                fs.writeFileSync(configFile, '{}');
+                            }
+                            release = await lockfile.lock(configFile, {
+                                retries: {
+                                    retries: 5,
+                                    factor: 2,
+                                    minTimeout: 1 * 1000,
+                                    maxTimeout: 2 * 1000,
+                                    randomize: false,
+                                }
+                            });
+                            fs.writeFileSync(configFile, JSON.stringify(diskConfig));
+                            config = diskConfig;
+                        } catch (err) {
+                            console.error(`[LAUNCHER CONFIG] Error (delete): ${err.message}`);
+                        } finally {
+                            if (release) await release();
+                        }
+                    }
+                    if (nextUpdate.resolve) nextUpdate.resolve(true);
+                } else {
+                    console.warn('[LAUNCHER CONFIG] Queue item had no patch or deleteKeys.');
+                    if (nextUpdate.resolve) nextUpdate.resolve(false);
                 }
-                if (nextUpdate.resolve) nextUpdate.resolve(true);
+            } catch (err) {
+                if (nextUpdate.reject) nextUpdate.reject(err);
             }
-        } catch (err) {
-            if (nextUpdate.reject) nextUpdate.reject(err);
         }
+    } finally {
+        configUpdateInProgress = false;
     }
-    configUpdateInProgress = false;
 }
 
 // Queue a config patch update
@@ -452,8 +694,17 @@ ipcMain.handle('delete-launcher-config', async (event, keys) => {
 });
 
 ipcMain.handle('get-launcher-config', async () => {
+    // Wait for any startup migration/copy (guarded by the separate configFileMutex)
+    // to finish before reading, so early readers don't see pre-migration/default values.
+    try { await configFileMutex; } catch (e) { /* migration errors are logged elsewhere */ }
     // Wait for any queued config updates to finish before returning config
+    const waitStart = Date.now();
+    const maxWaitMs = 5000;
     while (configUpdateInProgress || configUpdateQueue.length > 0) {
+        if (Date.now() - waitStart > maxWaitMs) {
+            console.warn('[LAUNCHER CONFIG] get-launcher-config timed out waiting for queue; reading from disk.');
+            break;
+        }
         // Wait in 50ms intervals until the queue is empty and not in progress
         await new Promise(res => setTimeout(res, 50));
     }
@@ -635,12 +886,52 @@ async function modifyCfg(cfgPath, changes, isRemoveRequest) {
 }
 
 ipcMain.handle('modify-cfg', async (event, cfgPath, changes, isRemove) => {
-    return await modifyCfg(cfgPath, changes, isRemove);
+    // Only the two known config keys are accepted; both resolve inside config.folder.
+    // The old "any other string is a full path" fallback was an unbounded write sink
+    // that no current caller uses (renderer always passes 'options' or 'login').
+    let resolvedPath;
+    if (cfgPath === 'options') {
+        resolvedPath = path.join(config.folder, 'options.cfg');
+    } else if (cfgPath === 'login') {
+        resolvedPath = path.join(config.folder, 'login.cfg');
+    } else {
+        console.warn('[MODIFY CFG] Rejected unknown config key:', cfgPath);
+        return false;
+    }
+    return await modifyCfg(resolvedPath, changes, isRemove);
 });
 
 ipcMain.on('setup-game', function () {
     setupGame();
 });
+    let rulesView = null;
+
+    ipcMain.on('set-rules-view-bounds', (event, bounds) => {
+        if (rulesView && rulesViewVisible) {
+            rulesView.setBounds({ x: bounds.x, y: bounds.y, width: bounds.width, height: bounds.height });
+        }
+    });
+
+    ipcMain.on('set-rules-view-visible', (_event, visible) => {
+        rulesViewVisible = !!visible;
+        if (!rulesViewVisible) {
+            if (rulesView) rulesView.setBounds({ x: 0, y: 0, width: 0, height: 0 });
+            if (rulesRefreshView) rulesRefreshView.setBounds({ x: 0, y: 0, width: 0, height: 0 });
+            rulesRefreshState = 'hidden';
+            applyRulesRefreshStateToOverlay();
+        }
+    });
+
+    ipcMain.on('set-rules-refresh-bounds', (_event, bounds) => {
+        if (rulesRefreshView && rulesViewVisible) {
+            rulesRefreshView.setBounds({ x: bounds.x, y: bounds.y, width: bounds.width, height: bounds.height });
+        }
+    });
+
+    ipcMain.on('set-rules-refresh-state', (_event, state) => {
+        rulesRefreshState = state;
+        applyRulesRefreshStateToOverlay();
+    });
 
 function setupGame() {
     if (setupWindow == null) {
@@ -666,22 +957,72 @@ function setupGame() {
             frame: false,
             roundedCorners: false,
             webPreferences: {
-                disableBlinkFeatures: "Auxclick",
-                nodeIntegration: true,
-                enableRemoteModule: true,
-                contextIsolation: false,
-                webviewTag: true
+                disableBlinkFeatures: 'Auxclick',
+                nodeIntegration: false,
+                contextIsolation: true,
+                sandbox: false,
+                preload: path.join(__dirname, 'setup', 'preload.js')
             },
             icon: path.join(__dirname, 'img/installer-icon.ico')
         });
-        setupWindow.loadURL(url.format({
-            pathname: path.join(__dirname, 'setup', 'index.html'),
-            protocol: 'file:',
-            slashes: true
-        }));
+        setupWindow.loadFile(path.join(__dirname, 'setup', 'index.html'));
+
+        if (isDev) {
+            setupWindow.webContents.openDevTools({ mode: 'detach' });
+        }
+
+        // ── Rules / ToS WebContentsView ──────────────────────────────────
+        rulesView = new WebContentsView({
+            webPreferences: { nodeIntegration: false, contextIsolation: true, sandbox: true }
+        });
+        setupWindow.contentView.addChildView(rulesView);
+        rulesView.webContents.loadURL('https://swgawakening.com/launcher-terms.php');
+        attachExternalNavigationPolicy(rulesView.webContents);
+
+        // ── Rules refresh overlay ────────────────────────────────────────
+        rulesRefreshView = new WebContentsView({
+            webPreferences: { nodeIntegration: false, contextIsolation: true, sandbox: true }
+        });
+        setupWindow.contentView.addChildView(rulesRefreshView);
+        rulesRefreshView.setBackgroundColor('#00000000');
+        const rulesRefreshIconPath = path.join(__dirname, 'img', 'buttons', 'btn-refresh.png');
+        let rulesRefreshIconDataUrl = '';
+        try {
+            const rulesRefreshIconBase64 = fs.readFileSync(rulesRefreshIconPath).toString('base64');
+            rulesRefreshIconDataUrl = `data:image/png;base64,${rulesRefreshIconBase64}`;
+        } catch (err) {
+            console.warn('[RULES REFRESH] Could not load refresh icon for overlay:', err && err.message ? err.message : err);
+        }
+        const rulesRefreshButtonStyle = rulesRefreshIconDataUrl
+            ? `background:transparent url('${rulesRefreshIconDataUrl}') center center / 18px 18px no-repeat;`
+            : `background:transparent;`;
+        const rulesRefreshOverlayHtml = `<!doctype html><html><head><meta charset="utf-8"><style>html,body{margin:0;padding:0;width:100%;height:100%;background:transparent;overflow:hidden}button{width:100%;height:100%;border:0;${rulesRefreshButtonStyle}color:#fff;font-size:13px;cursor:pointer;opacity:0}button::before{content:'↻';display:${rulesRefreshIconDataUrl ? 'none' : 'block'};line-height:16px;text-align:center}button.idle{opacity:.55}button.idle:hover{opacity:.85}button.spinner{opacity:.85;cursor:default;animation:swgaSpin 0.9s linear infinite}button.hidden{opacity:0;cursor:default}@keyframes swgaSpin{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}</style></head><body><button id="refreshBtn" class="hidden" aria-label="Refresh terms" onclick="if(!this.classList.contains('spinner')) location.href='swga-refresh://reload'; return false;"></button><script>window.__setRefreshState=function(state){var btn=document.getElementById('refreshBtn');if(!btn)return;btn.className='';if(state==='spinner')btn.classList.add('spinner');else if(state==='idle')btn.classList.add('idle');else btn.classList.add('hidden');};<\/script></body></html>`;
+        rulesRefreshView.webContents.loadURL(`data:text/html;charset=UTF-8,${encodeURIComponent(rulesRefreshOverlayHtml)}`);
+        rulesRefreshView.webContents.on('did-finish-load', () => {
+            applyRulesRefreshStateToOverlay();
+        });
+        rulesRefreshView.webContents.on('will-navigate', (event, navUrl) => {
+            event.preventDefault();
+            if (typeof navUrl === 'string' && navUrl.startsWith('swga-refresh://reload')) {
+                if (rulesView) rulesView.webContents.reloadIgnoringCache();
+                if (setupWindow && !setupWindow.isDestroyed()) {
+                    setupWindow.webContents.send('rules-refresh-clicked');
+                }
+            }
+        });
+        rulesRefreshView.webContents.setWindowOpenHandler(() => ({ action: 'deny' }));
+
+        rulesView.webContents.on('did-finish-load', () => {
+            if (setupWindow && !setupWindow.isDestroyed()) {
+                setupWindow.webContents.send('rules-view-loaded');
+            }
+        });
+
         setupWindow.once('ready-to-show', () => setupWindow.show());
         setupWindow.on('closed', () => {
             setupWindow = null;
+            rulesView = null;
+            rulesRefreshView = null;
         });
     } else {
         setupWindow.focus();
@@ -693,19 +1034,290 @@ ipcMain.on('setup-complete', (event, arg) => {
 });
 
 
-autoUpdater.on('update-downloaded', (info) => {
+    // ── News view IPC ─────────────────────────────────────────────────────────────
+    ipcMain.on('set-news-view-bounds', (_event, bounds) => {
+        if (newsView) newsView.setBounds({ x: bounds.x, y: bounds.y, width: bounds.width, height: bounds.height });
+    });
+    ipcMain.on('set-news-refresh-bounds', (_event, bounds) => {
+        if (newsRefreshView) newsRefreshView.setBounds({ x: bounds.x, y: bounds.y, width: bounds.width, height: bounds.height });
+    });
+    ipcMain.on('set-news-refresh-state', (_event, state) => {
+        newsRefreshState = state;
+        applyNewsRefreshStateToOverlay();
+    });
+    ipcMain.on('reload-news-view', () => {
+        if (newsView) newsView.webContents.reloadIgnoringCache();
+    });
+
+    // ── File-system helpers ───────────────────────────────────────────────────────
+    ipcMain.handle('file-exists', async (_event, filePath) => fs.existsSync(filePath));
+
+    ipcMain.handle('cleanup-install-files', async (_event, folder, fileNames) => {
+        const root = path.resolve(folder);
+        for (const name of fileNames) {
+            const p = path.join(folder, name);
+            // Containment: a malformed entry (stray "..") shouldn't delete outside `folder`.
+            const resolved = path.resolve(p);
+            if (resolved !== root && !resolved.startsWith(root + path.sep)) {
+                console.log('[CLEANUP] Skipped entry outside install folder: ' + name);
+                continue;
+            }
+            if (fs.existsSync(p)) {
+                try { fs.unlinkSync(p); } catch (e) { console.log('[CLEANUP] Could not delete: ' + name); }
+            }
+        }
+        return true;
+    });
+
+    ipcMain.handle('check-game-installed', async (_event, folder) =>
+        fs.existsSync(path.join(folder, 'qt-mt305.dll'))
+    );
+
+    ipcMain.handle('check-swg-source', async (_event, dir) =>
+        fs.existsSync(path.join(dir, 'bottom.tre')) &&
+        fs.existsSync(path.join(dir, 'data_animation_00.tre')) &&
+        fs.existsSync(path.join(dir, 'data_texture_04.tre'))
+    );
+
+    ipcMain.handle('get-cleanup-info', async (_event, folder, files) => {
+        let count = 0, size = 0;
+        for (const file of files) {
+            if (fs.existsSync(path.join(folder, file.name))) { count++; size += file.size; }
+        }
+        return { count, size };
+    });
+
+    // ── Install / patch system ────────────────────────────────────────────────────
+    const install = require('./install');
+
+    ipcMain.handle('start-install', async (_event, swgPath, fullScan, isResume) => {
+            const installStart = Date.now();
+            console.info('[INSTALL IPC] start-install requested', {
+                swgPath,
+                fullScan,
+                isResume,
+                folder: config.folder,
+                login: config.login,
+            });
+        const emuPath = config.folder;
+        const srcPath = swgPath || config.folder;
+        install.progress = (completed, total) => {
+            if (mainWindow && !mainWindow.isDestroyed()) {
+                mainWindow.webContents.send('install-progress', { completed, total });
+            }
+        };
+        install.onError = (message) => {
+            if (mainWindow && !mainWindow.isDestroyed()) {
+                mainWindow.webContents.send('install-error', String(message || 'Install failed'));
+            }
+        };
+            try {
+                install.install(srcPath, emuPath, fullScan, config.login, isResume);
+            } catch (err) {
+                console.error('[INSTALL IPC] start-install failed', err);
+                throw err;
+            }
+            console.info('[INSTALL IPC] start-install dispatched', {
+                elapsedMs: Date.now() - installStart,
+                srcPath,
+                emuPath,
+                isResume,
+            });
+        return true;
+    });
+
+        ipcMain.handle('cancel-install', async () => {
+            console.info('[INSTALL IPC] cancel-install requested');
+            install.cancel();
+            return true;
+        });
+
+    ipcMain.handle('get-install-resume-state', async () => {
+        const state = install.getResumeState();
+        return {
+            completedFiles: Array.from(state.completedFiles.entries()),
+            completedBytes: state.completedBytes,
+        };
+    });
+
+    ipcMain.handle('clear-install-resume-state', async () => {
+        install.clearResumeState();
+        return true;
+    });
+
+    // ── EXE patching (FPS) ────────────────────────────────────────────────────────
+    // Read-only: returns current FPS from exe without modifying it.
+    ipcMain.handle('read-exe-fps', async (_event) => {
+        const exePath = path.join(config.folder, 'SWGEmu.exe');
+        const { Worker } = require('worker_threads');
+        return new Promise((resolve) => {
+            const workerCode = `
+                const { workerData, parentPort } = require('worker_threads');
+                const fs = require('fs');
+                try {
+                    const rfd = fs.openSync(workerData.exePath, 'r');
+                    const rbuf = Buffer.alloc(7);
+                    const bytesRead = fs.readSync(rfd, rbuf, 0, 7, 0x1153);
+                    fs.closeSync(rfd);
+                    if (bytesRead === 7 && rbuf[0] === 0xc7 && rbuf[1] === 0x45 && rbuf[2] === 0x94) {
+                        const exeFps = rbuf.readFloatLE(3);
+                        parentPort.postMessage({ exeFps });
+                    } else {
+                        parentPort.postMessage({ exeFps: null, reason: 'opcode_mismatch', bytesRead, opcodeBytes: rbuf.slice(0, 3).toString('hex') });
+                    }
+                } catch (err) {
+                    parentPort.postMessage({ exeFps: null, error: err.message, code: err.code });
+                }
+            `;
+            const worker = new Worker(workerCode, { eval: true, workerData: { exePath } });
+            worker.on('message', (result) => resolve(result));
+            worker.on('error', (err) => resolve({ exeFps: null, error: err.message }));
+        });
+    });
+
+    // Reads current FPS from exe, writes desiredFps if it differs, then replies.
+    // Runs entirely in a worker thread — main process event loop is never blocked.
+    ipcMain.on('patch-exe-fps', (_event, desiredFps) => {
+        const exePath = path.join(config.folder, 'SWGEmu.exe');
+        const sender = _event.sender;
+        const { Worker } = require('worker_threads');
+        const workerCode = `
+            const { workerData, parentPort } = require('worker_threads');
+            const fs = require('fs');
+            function patchFps() {
+                try {
+                    // Read current FPS value (7 bytes at 0x1153: opcode + offset + float)
+                    const rfd = fs.openSync(workerData.exePath, 'r');
+                    const rbuf = Buffer.alloc(7);
+                    const bytesRead = fs.readSync(rfd, rbuf, 0, 7, 0x1153);
+                    fs.closeSync(rfd);
+                    if (bytesRead !== 7 || rbuf[0] !== 0xc7 || rbuf[1] !== 0x45 || rbuf[2] !== 0x94) {
+                        parentPort.postMessage({ patched: false, reason: 'opcode_mismatch' });
+                        return;
+                    }
+                    const currentFps = rbuf.readFloatLE(3);
+                    const desired = workerData.desiredFps;
+                    if (!isFinite(desired) || Math.abs(currentFps - desired) <= 0.01) {
+                        parentPort.postMessage({ patched: false, reason: 'no_change_needed', currentFps });
+                        return;
+                    }
+                    // Write new FPS
+                    const wfd = fs.openSync(workerData.exePath, 'r+');
+                    const wbuf = Buffer.alloc(4);
+                    wbuf.writeFloatLE(desired);
+                    fs.writeSync(wfd, wbuf, 0, 4, 0x1156);
+                    fs.closeSync(wfd);
+                    // Read-back verification
+                    const vfd = fs.openSync(workerData.exePath, 'r');
+                    const vbuf = Buffer.alloc(4);
+                    fs.readSync(vfd, vbuf, 0, 4, 0x1156);
+                    fs.closeSync(vfd);
+                    const verifiedFps = vbuf.readFloatLE(0);
+                    if (Math.abs(verifiedFps - desired) > 0.01) {
+                        parentPort.postMessage({ patched: false, reason: 'verify_failed', verifiedFps, desired });
+                        return;
+                    }
+                    parentPort.postMessage({ patched: true, verifiedFps });
+                } catch (err) {
+                    parentPort.postMessage({ patched: false, error: err.message, code: err.code });
+                }
+            }
+            patchFps();
+        `;
+        const worker = new Worker(workerCode, {
+            eval: true,
+            workerData: { exePath, desiredFps: Number(desiredFps) }
+        });
+        worker.on('message', (result) => {
+            if (!sender.isDestroyed()) sender.send('exe-fps-ready', result);
+        });
+        worker.on('error', (err) => {
+            if (!sender.isDestroyed()) sender.send('exe-fps-ready', { patched: false, error: err.message });
+        });
+    });
+
+    // ── Game / tool launching ─────────────────────────────────────────────────────
+    const _childProcess = require('child_process');
+    const _os = require('os');
+
+    ipcMain.handle('spawn-game', async (_event, folder, launchArgs, ramMB) => {
+        const env = Object.assign({}, process.env, { SWGCLIENT_MEMORY_SIZE_MB: String(ramMB) });
+        const sender = _event.sender;
+        if (_os.platform() === 'win32') {
+            const child = _childProcess.spawn('SWGEmu.exe', launchArgs,
+                { cwd: folder, env, detached: false, stdio: 'ignore' });
+            // Wait briefly to confirm window opened, then re-enable button
+            setTimeout(() => {
+                if (!child.killed && !sender.isDestroyed()) {
+                    sender.send('game-launched');
+                }
+            }, 500);
+            child.on('exit', () => {
+                if (!sender.isDestroyed()) sender.send('game-exited');
+            });
+            child.unref();
+        } else {
+            const child = _childProcess.exec('wine SWGEmu.exe',
+                { cwd: folder, env, detached: false, stdio: 'ignore' }, () => {});
+            // Wait briefly to confirm window opened, then re-enable button
+            setTimeout(() => {
+                if (!child.killed && !sender.isDestroyed()) {
+                    sender.send('game-launched');
+                }
+            }, 500);
+            child.on('exit', () => {
+                if (!sender.isDestroyed()) sender.send('game-exited');
+            });
+            child.unref();
+        }
+        return true;
+    });
+
+    ipcMain.handle('spawn-exe', async (_event, folder, exe) => {
+        if (_os.platform() === 'win32') {
+            const child = _childProcess.spawn('cmd', ['/c', path.join(folder, exe)],
+                { cwd: folder, detached: true, stdio: 'ignore' });
+            child.unref();
+        } else {
+            const child = _childProcess.exec(`wine ${exe}`,
+                { cwd: folder, detached: true, stdio: 'ignore' }, () => {});
+            child.unref();
+        }
+        return true;
+    });
+
+    // ── Shell ─────────────────────────────────────────────────────────────────────
+    ipcMain.handle('open-external', async (_event, extUrl) => {
+        // Only allow http(s) — never hand file://, UNC, or custom-protocol URIs to the
+        // OS shell. Mirrors the openExternalSafe guard used by the embedded web views.
+        if (typeof extUrl === 'string' && /^https?:\/\//i.test(extUrl)) {
+            await shell.openExternal(extUrl);
+            return true;
+        }
+        console.warn('[SHELL] Blocked open-external for non-http(s) URL:', extUrl);
+        return false;
+    });
+
+    autoUpdater.on('update-downloaded', (info) => {
     autoUpdater.quitAndInstall();
 });
 
 autoUpdater.on('download-progress', (progress) => {
-    mainWindow.webContents.send('download-progress', progress);
+    if (mainWindow && !mainWindow.isDestroyed()) {
+        mainWindow.webContents.send('download-progress', progress);
+    }
 });
 
 autoUpdater.on('update-available', info => {
-    mainWindow.webContents.send('downloading-update', 'Downloading V' + info.version);
+    if (mainWindow && !mainWindow.isDestroyed()) {
+        mainWindow.webContents.send('downloading-update', 'Downloading V' + info.version);
+    }
 });
 
 app.on('ready', function () {
+    // Initialize after window creation path is underway to avoid startup lockups.
+    setTimeout(() => initDiscordRpc(), 500);
+
     if (!isDev)
         autoUpdater.checkForUpdates();
 });
