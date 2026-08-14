@@ -9,6 +9,8 @@ const isDev = require('electron-is-dev');
 const { Client: DiscordRpcClient } = require('@xhayper/discord-rpc');
 const discordRPCConfig = require('./json/discordrpc');
 
+const canOpenDevTools = isDev && !app.isPackaged;
+
 const LAUNCHER_DEVICE_SCALE_FACTOR = '1.22';
 app.commandLine.appendSwitch('force-device-scale-factor', LAUNCHER_DEVICE_SCALE_FACTOR);
 
@@ -354,7 +356,7 @@ function createWindow() {
     // keep forwarding live once the DevTools console can receive them.
     mainWindow.webContents.on('did-finish-load', flushMainLogBuffer);
 
-    if (isDev) {
+    if (canOpenDevTools) {
         mainWindow.webContents.openDevTools({ mode: 'detach' });
     }
 
@@ -967,7 +969,7 @@ function setupGame() {
         });
         setupWindow.loadFile(path.join(__dirname, 'setup', 'index.html'));
 
-        if (isDev) {
+        if (canOpenDevTools) {
             setupWindow.webContents.openDevTools({ mode: 'detach' });
         }
 
