@@ -11,7 +11,7 @@
         "build-linux": "electron-builder --linux --x64",
         "build-mac": "electron-builder --mac --x64"
     },
-    "repository": "https://github.com/CycloneAwakening/SWGAwakening",
+    "repository": "https://github.com/SWG-Awakening/SWG-Awakening-Launcher",
     "homepage": "https://swgawakening.com/portal",
     "keywords": [
         "swga",
@@ -46,6 +46,13 @@
     "build": {
         "appId": "com.swgawakening.launcher",
         "productName": "SWG Awakening Launcher",
+        "publish": [
+            {
+                "provider": "github",
+                "owner": "SWG-Awakening",
+                "repo": "SWG-Awakening-Launcher"
+            }
+        ],
         "win": {
             "requestedExecutionLevel": "highestAvailable",
             "target": [
