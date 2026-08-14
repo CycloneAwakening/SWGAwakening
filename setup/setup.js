@@ -62,8 +62,11 @@ async function deleteConfigKeys(keys) {
 
 // On startup, load config and initialize UI
 let configReady = loadConfig().then(() => {
-    folderBox.value = config.folder;
-    fileCleanUp();
+    folderBox.value = config.folder || '';
+    // Only call fileCleanUp if folder is already configured
+    if (config.folder) {
+        fileCleanUp();
+    }
 });
 
 function updateRulesViewBounds() {
@@ -236,6 +239,11 @@ function navButtonNext(button) {
 }
 
 async function fileCleanUp() {
+    // Ensure config.folder is set before attempting cleanup info
+    if (!config.folder || typeof config.folder !== 'string') {
+        console.warn('[SETUP] Config folder not set, skipping cleanup info');
+        return;
+    }
     const info = await window.electronAPI.getCleanupInfo(config.folder, cleanup);
     const cleanUpCountValue = info.count;
     const cleanUpSizeValue = info.size;
