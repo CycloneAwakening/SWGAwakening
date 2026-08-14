@@ -174,6 +174,15 @@ if (fpsNoticeClose) {
     fpsNoticeClose.addEventListener('click', hideFpsNotice);
 }
 
+// Runs fn only after the renderer has painted at least one frame. A synchronous
+// window.alert() during startup freezes the main renderer before it paints, so
+// the window appears blank (only the separate news WebContentsView renders).
+// Deferring past two animation frames guarantees the launcher UI is visible
+// before any blocking dialog is shown.
+function scheduleAfterPaint(fn) {
+    requestAnimationFrame(() => requestAnimationFrame(() => setTimeout(fn, 0)));
+}
+
 // Use Electron's userData directory for the launcher data store
 
 let config = { folder: 'C:\\SWGAwakening' };
@@ -246,7 +255,10 @@ let configReady = (async () => {
             const configFps = Number(config.fps);
             if (exeFps !== configFps) {
                 console.warn('[RENDERER] Unapplied FPS change detected! Exe:', exeFps, 'Config:', configFps);
-                alert(`Unapplied FPS Change Detected\n\nYour FPS setting was changed from ${exeFps} FPS to ${configFps} FPS, but was not applied last session.\n\nThe updated value of ${configFps} FPS will apply next time you click "Play".`);
+                // Defer the blocking dialog so it doesn't stall the first paint.
+                scheduleAfterPaint(() => {
+                    alert(`Unapplied FPS Change Detected\n\nYour FPS setting was changed from ${exeFps} FPS to ${configFps} FPS, but was not applied last session.\n\nThe updated value of ${configFps} FPS will apply next time you click "Play".`);
+                });
             }
         } else {
             // Fallback to config FPS if exe read fails
