@@ -174,13 +174,15 @@ if (fpsNoticeClose) {
     fpsNoticeClose.addEventListener('click', hideFpsNotice);
 }
 
-// Runs fn only after the renderer has painted at least one frame. A synchronous
-// window.alert() during startup freezes the main renderer before it paints, so
-// the window appears blank (only the separate news WebContentsView renders).
-// Deferring past two animation frames guarantees the launcher UI is visible
-// before any blocking dialog is shown.
+// Runs fn only after the renderer has painted and the launcher UI has settled.
+// A synchronous window.alert() during startup freezes the main renderer before
+// it paints, so the window appears blank (only the separate news WebContentsView
+// renders). Waiting past two animation frames guarantees a first paint, and the
+// extra delay lets the full launcher UI (background, config, news view) finish
+// rendering before any blocking dialog is shown.
+const STARTUP_DIALOG_DELAY_MS = 2000;
 function scheduleAfterPaint(fn) {
-    requestAnimationFrame(() => requestAnimationFrame(() => setTimeout(fn, 0)));
+    requestAnimationFrame(() => requestAnimationFrame(() => setTimeout(fn, STARTUP_DIALOG_DELAY_MS)));
 }
 
 // Use Electron's userData directory for the launcher data store
