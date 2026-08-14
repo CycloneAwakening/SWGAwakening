@@ -596,7 +596,12 @@ async function processConfigQueue() {
                     }
                 }
                 if (nextUpdate.patch) {
-                    const mergedConfig = deepMergePatch(diskConfig, nextUpdate.patch);
+                    // Merge in correct precedence order:
+                    // 1. Start with diskConfig (what was saved)
+                    // 2. Merge in-memory config (newer state takes precedence)
+                    // 3. Apply the new patch (newest change takes precedence)
+                    let mergedConfig = deepMergePatch({ ...diskConfig }, config);
+                    mergedConfig = deepMergePatch(mergedConfig, nextUpdate.patch);
                     let release;
                     try {
                         if (!fs.existsSync(configFile)) {
@@ -622,10 +627,12 @@ async function processConfigQueue() {
                         if (release) await release();
                     }
                 } else if (nextUpdate.deleteKeys) {
+                    // Start with current config and delete specified keys
+                    let modifiedConfig = { ...config };
                     let changed = false;
                     for (const key of nextUpdate.deleteKeys) {
-                        if (key in diskConfig) {
-                            delete diskConfig[key];
+                        if (key in modifiedConfig) {
+                            delete modifiedConfig[key];
                             changed = true;
                         }
                     }
@@ -644,8 +651,8 @@ async function processConfigQueue() {
                                     randomize: false,
                                 }
                             });
-                            fs.writeFileSync(configFile, JSON.stringify(diskConfig));
-                            config = diskConfig;
+                            fs.writeFileSync(configFile, JSON.stringify(modifiedConfig));
+                            config = modifiedConfig;
                         } catch (err) {
                             console.error(`[LAUNCHER CONFIG] Error (delete): ${err.message}`);
                         } finally {
@@ -888,6 +895,11 @@ async function modifyCfg(cfgPath, changes, isRemoveRequest) {
 }
 
 ipcMain.handle('modify-cfg', async (event, cfgPath, changes, isRemove) => {
+    // Validate that config.folder exists before proceeding
+    if (!config.folder || typeof config.folder !== 'string') {
+        console.error('[MODIFY CFG] Config folder not set or invalid');
+        return false;
+    }
     // Only the two known config keys are accepted; both resolve inside config.folder.
     // The old "any other string is a full path" fallback was an unbounded write sink
     // that no current caller uses (renderer always passes 'options' or 'login').
@@ -1093,6 +1105,11 @@ ipcMain.on('setup-complete', (event, arg) => {
     const install = require('./install');
 
     ipcMain.handle('start-install', async (_event, swgPath, fullScan, isResume) => {
+            // Validate that config.folder exists before proceeding
+            if (!config.folder || typeof config.folder !== 'string') {
+                console.error('[INSTALL IPC] Config folder not set or invalid');
+                throw new Error('Config folder not configured');
+            }
             const installStart = Date.now();
             console.info('[INSTALL IPC] start-install requested', {
                 swgPath,
@@ -1150,6 +1167,11 @@ ipcMain.on('setup-complete', (event, arg) => {
     // ── EXE patching (FPS) ────────────────────────────────────────────────────────
     // Read-only: returns current FPS from exe without modifying it.
     ipcMain.handle('read-exe-fps', async (_event) => {
+        // Validate that config.folder exists before proceeding
+        if (!config.folder || typeof config.folder !== 'string') {
+            console.error('[READ EXE FPS] Config folder not set or invalid');
+            return { exeFps: null, error: 'Config folder not configured' };
+        }
         const exePath = path.join(config.folder, 'SWGEmu.exe');
         const { Worker } = require('worker_threads');
         return new Promise((resolve) => {
@@ -1180,6 +1202,14 @@ ipcMain.on('setup-complete', (event, arg) => {
     // Reads current FPS from exe, writes desiredFps if it differs, then replies.
     // Runs entirely in a worker thread — main process event loop is never blocked.
     ipcMain.on('patch-exe-fps', (_event, desiredFps) => {
+        // Validate that config.folder exists before proceeding
+        if (!config.folder || typeof config.folder !== 'string') {
+            console.error('[PATCH EXE FPS] Config folder not set or invalid');
+            if (_event && _event.sender && !_event.sender.isDestroyed()) {
+                _event.sender.send('exe-fps-ready', { patched: false, error: 'Config folder not configured' });
+            }
+            return;
+        }
         const exePath = path.join(config.folder, 'SWGEmu.exe');
         const sender = _event.sender;
         const { Worker } = require('worker_threads');
