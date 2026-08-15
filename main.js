@@ -1275,9 +1275,13 @@ ipcMain.on('setup-complete', (event, arg) => {
     ipcMain.handle('spawn-game', async (_event, folder, launchArgs, ramMB) => {
         const env = Object.assign({}, process.env, { SWGCLIENT_MEMORY_SIZE_MB: String(ramMB) });
         const sender = _event.sender;
+        // detached: true is required so the client outlives the launcher. On Windows
+        // libuv puts every non-detached child into a job object flagged
+        // KILL_ON_JOB_CLOSE, so closing the launcher would also kill any running
+        // SWGEmu.exe; on Linux it keeps the child in the launcher's process group.
         if (_os.platform() === 'win32') {
             const child = _childProcess.spawn('SWGEmu.exe', launchArgs,
-                { cwd: folder, env, detached: false, stdio: 'ignore' });
+                { cwd: folder, env, detached: true, stdio: 'ignore' });
             // Wait briefly to confirm window opened, then re-enable button
             setTimeout(() => {
                 if (!child.killed && !sender.isDestroyed()) {
@@ -1290,7 +1294,7 @@ ipcMain.on('setup-complete', (event, arg) => {
             child.unref();
         } else {
             const child = _childProcess.exec('wine SWGEmu.exe',
-                { cwd: folder, env, detached: false, stdio: 'ignore' }, () => {});
+                { cwd: folder, env, detached: true, stdio: 'ignore' }, () => {});
             // Wait briefly to confirm window opened, then re-enable button
             setTimeout(() => {
                 if (!child.killed && !sender.isDestroyed()) {
