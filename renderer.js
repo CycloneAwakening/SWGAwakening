@@ -1224,6 +1224,7 @@ function configOverlayClose(exit) {
 let cancelledState = false;
 // Progress bar cancel button
 cancelBtn.addEventListener('click', function (event) {
+    // cancelInstall also drops a patch that is only waiting on the game to close.
     window.electronAPI.cancelInstall();
     cancelledState = true;
     networkPaused = false; // Explicit user cancel - do not auto-resume on reconnect
@@ -1235,6 +1236,33 @@ cancelBtn.addEventListener('click', function (event) {
     progressText.innerHTML = 'Patch canceled.';
     toggleAll(true);
 })
+
+// A patch that can't start (or couldn't finish) because a client is open is held in
+// main until the clients close, then run from there. These two events report that wait
+// starting and ending — the launcher stays usable throughout, so the only control that
+// changes is CANCEL, which here means "stop waiting" rather than "abort a patch".
+window.electronAPI.onInstallDeferred(function (reason) {
+    progressActive = false;
+    stopProgressAnimation();
+    progressText.className = 'active';
+    progressText.innerHTML = reason === 'interrupted'
+        ? 'Patch interrupted by an open game client — it will continue once all clients are closed.'
+        : 'Close all game clients — the patch will start automatically.';
+    toggleAll(true);
+    cancelBtn.disabled = false;
+    cancelledState = true;
+    networkPaused = false;
+});
+
+window.electronAPI.onInstallResumed(function (reason) {
+    progressText.className = 'active';
+    progressText.innerHTML = reason === 'interrupted'
+        ? 'Game clients closed. Continuing patch...'
+        : 'Game clients closed. Starting patch...';
+    cancelledState = false;
+    toggleAll(false, true);
+    resetProgress();
+});
 
 window.electronAPI.onDownloadingUpdate(function (text) {
     versionDiv.innerHTML = text;
@@ -1259,15 +1287,6 @@ window.electronAPI.onInstallError(function (message) {
         cancelledState = true;
         networkPaused = true;
         toggleAll(false, true);
-        return;
-    }
-    // Covers both a patch refused up front and one stopped by a file the running
-    // client had locked. Either way the fix is the same, and VERIFY re-runs it.
-    if (text.toLowerCase().includes('game client is running')) {
-        progressText.innerHTML = 'Close all game clients, then click SETTINGS > Verify Files to patch.';
-        toggleAll(true);
-        cancelledState = true;
-        networkPaused = false;
         return;
     }
     progressText.innerHTML = 'Install failed: ' + text;

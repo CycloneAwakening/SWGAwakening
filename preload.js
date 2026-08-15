@@ -72,6 +72,13 @@ contextBridge.exposeInMainWorld('electronAPI', {
     onInstallError: (callback) =>
         ipcRenderer.on('install-error', (_event, message) => callback(message)),
 
+    // Patch is held until every game client closes, then started automatically. Reason
+    // is 'blocked' (refused before starting) or 'interrupted' (stopped partway).
+    onInstallDeferred: (callback) =>
+        ipcRenderer.on('install-deferred', (_event, reason) => callback(reason)),
+    onInstallResumed: (callback) =>
+        ipcRenderer.on('install-resumed', (_event, reason) => callback(reason)),
+
     // True while at least one game client is running (detected from the exe's
     // write lock, so clients started outside this launcher session count too).
     isGameRunning: () => ipcRenderer.invoke('is-game-running'),

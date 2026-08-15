@@ -9,9 +9,10 @@ const server = require('./json/server');
 // that are guaranteed to fail the same way.
 const FILE_IN_USE_PREFIX = 'file in use: ';
 
-// Reason string for a patch stopped by a running client. The renderer matches on it to
-// show a "close the game" message instead of a generic install failure.
+// Reason string for a patch stopped by a running client. Main matches on it to defer
+// and retry the patch once the client exits, instead of reporting a plain failure.
 const GAME_RUNNING_REASON = 'game client is running';
+module.exports.GAME_RUNNING_REASON = GAME_RUNNING_REASON;
 
 function getWorkerCount() {
     const envValue = parseInt(process.env.SWG_INSTALL_CONCURRENCY || '', 10);

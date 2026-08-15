@@ -1122,62 +1122,125 @@ ipcMain.on('setup-complete', (event, arg) => {
 
     ipcMain.handle('is-game-running', async () => isGameClientRunning());
 
-    ipcMain.handle('start-install', async (_event, swgPath, fullScan, isResume) => {
-            // Validate that config.folder exists before proceeding
-            if (!config.folder || typeof config.folder !== 'string') {
-                console.error('[INSTALL IPC] Config folder not set or invalid');
-                throw new Error('Config folder not configured');
-            }
-            // Refuse to patch while a client is running. The game memory-maps the .tre
-            // files it loaded at startup, so any file the patch needs to replace is
-            // locked — the install would download it in full and then fail the rename.
-            // Gating here rather than at each renderer call site covers every patch
-            // entry point: boot scan, verify, directory change, server switch, setup,
-            // and network resume.
-            if (isGameClientRunning()) {
-                console.warn('[INSTALL IPC] start-install refused: game client is running');
-                if (mainWindow && !mainWindow.isDestroyed()) {
-                    mainWindow.webContents.send('install-error', 'game client is running');
-                }
-                return false;
-            }
-            const installStart = Date.now();
-            console.info('[INSTALL IPC] start-install requested', {
-                swgPath,
-                fullScan,
-                isResume,
-                folder: config.folder,
-                login: config.login,
-            });
+    function sendToWindow(channel, payload) {
+        if (mainWindow && !mainWindow.isDestroyed()) {
+            mainWindow.webContents.send(channel, payload);
+        }
+    }
+
+    // A patch that can't run because a client is open isn't a failure, it's a wait: the
+    // block clears the moment that client exits. Rather than making the user notice and
+    // retry, main holds the *original* request and runs it itself once the clients are
+    // gone. Keeping the pending request here (not in the renderer) matters because only
+    // the exact arguments will do — the setup flow's copy-from-old-install and the
+    // network resume both carry state that a generic full scan would silently drop.
+    // 'blocked' = refused before it ever started; 'interrupted' = stopped partway by a
+    // file the client had locked. Carried through to the renderer so the progress text
+    // can say which happened, and echoed back on resume so the follow-up line matches.
+    const DEFERRED_INSTALL_POLL_MS = 3000;
+    let deferredInstall = null;
+    let deferredReason = null;
+    let deferredInstallTimer = null;
+
+    function clearDeferredInstall() {
+        deferredInstall = null;
+        deferredReason = null;
+        if (deferredInstallTimer !== null) {
+            clearInterval(deferredInstallTimer);
+            deferredInstallTimer = null;
+        }
+    }
+
+    function deferInstall(request, reason) {
+        deferredInstall = request;
+        deferredReason = reason;
+        sendToWindow('install-deferred', reason);
+        if (deferredInstallTimer !== null) return;
+        deferredInstallTimer = setInterval(() => {
+            if (!deferredInstall) return clearDeferredInstall();
+            if (isGameClientRunning()) return;
+            const pending = deferredInstall;
+            const pendingReason = deferredReason;
+            clearDeferredInstall();
+            console.info('[INSTALL IPC] Game clients closed; starting deferred patch.');
+            sendToWindow('install-resumed', pendingReason);
+            runInstall(pending);
+        }, DEFERRED_INSTALL_POLL_MS);
+    }
+
+    function runInstall(request) {
+        const { swgPath, fullScan, isResume } = request;
+        const installStart = Date.now();
+        console.info('[INSTALL IPC] start-install requested', {
+            swgPath,
+            fullScan,
+            isResume,
+            folder: config.folder,
+            login: config.login,
+        });
         const emuPath = config.folder;
         const srcPath = swgPath || config.folder;
         install.progress = (completed, total) => {
-            if (mainWindow && !mainWindow.isDestroyed()) {
-                mainWindow.webContents.send('install-progress', { completed, total });
-            }
+            sendToWindow('install-progress', { completed, total });
         };
         install.onError = (message) => {
-            if (mainWindow && !mainWindow.isDestroyed()) {
-                mainWindow.webContents.send('install-error', String(message || 'Install failed'));
+            const text = String(message || 'Install failed');
+            // A patch stopped partway by a locked file is the same situation as one
+            // refused up front, so defer and retry it the same way. Only when a client
+            // is still holding the exe, though: if nothing is, something else locked the
+            // file and re-running on a timer would spin without ever succeeding.
+            if (text.includes(install.GAME_RUNNING_REASON) && isGameClientRunning()) {
+                console.warn('[INSTALL IPC] Patch stopped by a running client; deferring retry.');
+                // Retry as a resume so the files this run already verified are skipped
+                // rather than re-hashed from scratch — the same mechanism the network
+                // reconnect uses. The interrupted file never reached completedFiles, so
+                // it stays queued, and entries whose manifest metadata has since changed
+                // are re-queued by the resume validation.
+                deferInstall({ ...request, isResume: true }, 'interrupted');
+                return;
             }
+            sendToWindow('install-error', text);
         };
-            try {
-                install.install(srcPath, emuPath, fullScan, config.login, isResume);
-            } catch (err) {
-                console.error('[INSTALL IPC] start-install failed', err);
-                throw err;
-            }
-            console.info('[INSTALL IPC] start-install dispatched', {
-                elapsedMs: Date.now() - installStart,
-                srcPath,
-                emuPath,
-                isResume,
-            });
+        try {
+            install.install(srcPath, emuPath, fullScan, config.login, isResume);
+        } catch (err) {
+            console.error('[INSTALL IPC] start-install failed', err);
+            throw err;
+        }
+        console.info('[INSTALL IPC] start-install dispatched', {
+            elapsedMs: Date.now() - installStart,
+            srcPath,
+            emuPath,
+            isResume,
+        });
+    }
+
+    ipcMain.handle('start-install', async (_event, swgPath, fullScan, isResume) => {
+        // Validate that config.folder exists before proceeding
+        if (!config.folder || typeof config.folder !== 'string') {
+            console.error('[INSTALL IPC] Config folder not set or invalid');
+            throw new Error('Config folder not configured');
+        }
+        // An explicit request supersedes whatever was waiting on the game to close.
+        clearDeferredInstall();
+        const request = { swgPath, fullScan, isResume };
+        // The game memory-maps the .tre files it loaded at startup, so any file this
+        // patch needs to replace is locked — it would download in full and then fail the
+        // rename. Gating here rather than at each renderer call site covers every patch
+        // entry point: boot scan, verify, directory change, server switch, setup, and
+        // network resume.
+        if (isGameClientRunning()) {
+            console.warn('[INSTALL IPC] start-install deferred: game client is running');
+            deferInstall(request, 'blocked');
+            return false;
+        }
+        runInstall(request);
         return true;
     });
 
         ipcMain.handle('cancel-install', async () => {
             console.info('[INSTALL IPC] cancel-install requested');
+            clearDeferredInstall();
             install.cancel();
             return true;
         });
