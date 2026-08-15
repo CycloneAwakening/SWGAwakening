@@ -1107,6 +1107,16 @@ loginServerSel.addEventListener('change', event => {
 });
 
 loginServerConfirm.addEventListener('click', async function (event) {
+    // Switching servers always rewrites the game files that differ between test and
+    // live. A running client keeps those files memory-mapped, so the replace cannot
+    // land — check before touching config or starting a patch, otherwise the switch
+    // half-applies: the new server is saved but its files fail to install.
+    if (await window.electronAPI.isGameRunning()) {
+        alert('Close all running game clients before switching servers.\n\nThe game holds its data files open while running, so the launcher cannot swap them for the other server\'s versions.');
+        configOverlayClose(true); // restores the dropdown to the current server
+        return;
+    }
+
     config.login = loginServerSel.value;
 
     // Persist the new server selection to the launcher config BEFORE starting
@@ -1249,6 +1259,15 @@ window.electronAPI.onInstallError(function (message) {
         cancelledState = true;
         networkPaused = true;
         toggleAll(false, true);
+        return;
+    }
+    // Covers both a patch refused up front and one stopped by a file the running
+    // client had locked. Either way the fix is the same, and VERIFY re-runs it.
+    if (text.toLowerCase().includes('game client is running')) {
+        progressText.innerHTML = 'Close all game clients, then click SETTINGS > Verify Files to patch.';
+        toggleAll(true);
+        cancelledState = true;
+        networkPaused = false;
         return;
     }
     progressText.innerHTML = 'Install failed: ' + text;

@@ -1104,11 +1104,42 @@ ipcMain.on('setup-complete', (event, arg) => {
     // ── Install / patch system ────────────────────────────────────────────────────
     const install = require('./install');
 
+    // Is at least one game client running? Windows holds a write lock on a running
+    // executable's image, so an r+ open is a cheap, shell-free probe — the same signal
+    // the FPS patcher already depends on. Only sharing-violation codes count as
+    // "running": a read-only or permission-denied exe is a different problem and must
+    // not be reported as a live client. Answers false when the exe isn't there yet.
+    function isGameClientRunning() {
+        if (!config.folder || typeof config.folder !== 'string') return false;
+        try {
+            const fd = fs.openSync(path.join(config.folder, 'SWGEmu.exe'), 'r+');
+            fs.closeSync(fd);
+            return false;
+        } catch (err) {
+            return err.code === 'EBUSY' || err.code === 'ETXTBSY';
+        }
+    }
+
+    ipcMain.handle('is-game-running', async () => isGameClientRunning());
+
     ipcMain.handle('start-install', async (_event, swgPath, fullScan, isResume) => {
             // Validate that config.folder exists before proceeding
             if (!config.folder || typeof config.folder !== 'string') {
                 console.error('[INSTALL IPC] Config folder not set or invalid');
                 throw new Error('Config folder not configured');
+            }
+            // Refuse to patch while a client is running. The game memory-maps the .tre
+            // files it loaded at startup, so any file the patch needs to replace is
+            // locked — the install would download it in full and then fail the rename.
+            // Gating here rather than at each renderer call site covers every patch
+            // entry point: boot scan, verify, directory change, server switch, setup,
+            // and network resume.
+            if (isGameClientRunning()) {
+                console.warn('[INSTALL IPC] start-install refused: game client is running');
+                if (mainWindow && !mainWindow.isDestroyed()) {
+                    mainWindow.webContents.send('install-error', 'game client is running');
+                }
+                return false;
             }
             const installStart = Date.now();
             console.info('[INSTALL IPC] start-install requested', {

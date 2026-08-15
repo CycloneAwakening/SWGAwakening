@@ -72,6 +72,10 @@ contextBridge.exposeInMainWorld('electronAPI', {
     onInstallError: (callback) =>
         ipcRenderer.on('install-error', (_event, message) => callback(message)),
 
+    // True while at least one game client is running (detected from the exe's
+    // write lock, so clients started outside this launcher session count too).
+    isGameRunning: () => ipcRenderer.invoke('is-game-running'),
+
     // ── EXE patching (FPS) ───────────────────────────────────────────────────
     // Reads actual FPS from exe (for initialization verification).
     readExeFps: () => ipcRenderer.invoke('read-exe-fps'),

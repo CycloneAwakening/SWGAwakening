@@ -3,6 +3,16 @@ const path = require('path');
 const os = require('os');
 const server = require('./json/server');
 
+// Marker a worker puts on an error when the destination file is held open by another
+// process. The parent turns it into an actionable "close the game" message instead of
+// surfacing a raw EPERM path, and stops the patch rather than downloading more files
+// that are guaranteed to fail the same way.
+const FILE_IN_USE_PREFIX = 'file in use: ';
+
+// Reason string for a patch stopped by a running client. The renderer matches on it to
+// show a "close the game" message instead of a generic install failure.
+const GAME_RUNNING_REASON = 'game client is running';
+
 function getWorkerCount() {
     const envValue = parseInt(process.env.SWG_INSTALL_CONCURRENCY || '', 10);
     if (Number.isFinite(envValue) && envValue > 0) {
@@ -401,6 +411,14 @@ module.exports.install = function (swgPath, emuPath, fullScan, loginKey, isResum
                 return;
             }
 
+            // A locked destination can't be resolved by retrying or by moving on: every
+            // other file the running client holds open will fail identically, after
+            // paying for its download first. Stop now and tell the user what to do.
+            if (message.fileInUse) {
+                hardFailInstall(GAME_RUNNING_REASON + ' (locked file: ' + message.file + ')');
+                return;
+            }
+
             if (message.networkInterruption) {
                 hardFailInstall('network interruption during patch download: ' + message.file);
                 return;
@@ -453,12 +471,35 @@ if (process.send) {
         try { fs.unlinkSync(filePath); } catch (ex) {}
     }
 
+    // Codes Windows/POSIX raise when a path can't be touched because another process
+    // holds it open. A running game client memory-maps every .tre it loaded at startup,
+    // so those files cannot be replaced until the client exits.
+    function isFileLockedError(err) {
+        const code = err && err.code;
+        return code === 'EPERM' || code === 'EBUSY' || code === 'EACCES' || code === 'ETXTBSY';
+    }
+
     function atomicReplace(stagePath, destPath, done) {
-        // Remove destination first so rename works consistently across Windows scenarios.
-        try { fs.unlinkSync(destPath); } catch (ex) {}
+        // rename() replaces an existing destination in one step, so the original file
+        // survives intact when the replace can't complete. Only if that fails do we
+        // unlink and retry — that fallback exists for a read-only destination, where
+        // unlink clears the attribute rename can't. Deleting up front would destroy a
+        // good file on behalf of a replace that was never going to land.
         fs.rename(stagePath, destPath, (err) => {
-            if (err) return done(err.message || String(err));
-            done();
+            if (!err) return done();
+            try {
+                fs.unlinkSync(destPath);
+            } catch (unlinkErr) {
+                safeUnlink(stagePath);
+                return done(isFileLockedError(unlinkErr)
+                    ? FILE_IN_USE_PREFIX + path.basename(destPath)
+                    : (err.message || String(err)));
+            }
+            fs.rename(stagePath, destPath, (retryErr) => {
+                if (!retryErr) return done();
+                safeUnlink(stagePath);
+                done(retryErr.message || String(retryErr));
+            });
         });
     }
 
@@ -557,12 +598,13 @@ if (process.send) {
                 const errText = String(err);
                 const fatalIntegrity = errText.startsWith('post-write md5 mismatch:');
                 const networkInterruption = errText.startsWith('network interruption:');
+                const fileInUse = errText.startsWith(FILE_IN_USE_PREFIX);
                 // If this file failed during transfer, roll back optimistic bytes for this file.
                 if (networkInterruption && progressReported !== 0) {
                     progress(-progressReported);
                     progressReported = 0;
                 }
-                sendToParent({ type: 'error', file: fileInfo.name, error: errText, fatalIntegrity, networkInterruption });
+                sendToParent({ type: 'error', file: fileInfo.name, error: errText, fatalIntegrity, networkInterruption, fileInUse });
                 return;
             }
             sendToParent("complete: " + fileInfo.name);
