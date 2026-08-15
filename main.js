@@ -477,7 +477,14 @@ ipcMain.on('window-close', (event) => {
 });
 ipcMain.on('window-toggle-devtools', (event) => {
     const win = BrowserWindow.fromWebContents(event.sender);
-    if (win) win.webContents.toggleDevTools();
+    if (!win) return;
+    
+    const contents = win.webContents;
+    if (contents.isDevToolsOpened()) {
+        contents.closeDevTools();
+    } else {
+        contents.openDevTools({ mode: 'detach' });
+    }
 });
 
 ipcMain.handle('get-user-data-path', () => app.getPath('userData'));
